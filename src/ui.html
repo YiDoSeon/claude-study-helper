@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>공부 도우미</title>
+<style>/*STYLE*/</style>
+</head>
+<body>
+<header class="top">
+  <h1>공부 도우미</h1>
+  <span id="sync-status" class="sync"></span>
+</header>
+
+<main>
+  <p id="key-notice" class="notice" hidden>
+    Claude API 키가 없어요. <button type="button" id="key-notice-link" class="link">설정에서 넣기</button>
+  </p>
+  <p id="import-notice" class="notice ok" hidden>다른 기기의 설정을 가져왔어요.</p>
+
+  <section id="view-quiz" class="view">
+    <form id="quiz-setup" class="card">
+      <label>분야 <select id="q-category"></select></label>
+      <label>주제 <select id="q-sub"></select></label>
+      <label>세부 주제 (선택) <input id="q-detail" placeholder="예: 클로저, 해시 충돌 처리" autocomplete="off"></label>
+      <div class="row">
+        <label>난이도 <select id="q-difficulty"></select></label>
+        <label>형식 <select id="q-type"></select></label>
+      </div>
+      <button type="submit" id="q-get" class="primary">문제 받기</button>
+    </form>
+
+    <p id="q-status" class="status" hidden></p>
+
+    <article id="q-card" class="card" hidden>
+      <div class="meta">
+        <span id="q-badge" class="badge"></span>
+        <span id="q-concept" class="tag"></span>
+        <button type="button" id="q-change" class="link">분야 바꾸기</button>
+      </div>
+      <div id="q-topic" class="muted small"></div>
+      <div id="q-prompt" class="md"></div>
+      <pre id="q-code" hidden></pre>
+      <div id="q-choices" class="choices"></div>
+      <textarea id="q-answer" rows="5" placeholder="답을 적어 주세요"></textarea>
+      <div class="actions">
+        <button type="button" id="q-submit" class="primary">제출</button>
+        <button type="button" id="q-giveup">모르겠어요</button>
+      </div>
+    </article>
+
+    <article id="q-result" class="card" hidden>
+      <div id="q-verdict" class="verdict"></div>
+      <div id="q-feedback" class="md"></div>
+      <h3>모범 답안</h3>
+      <div id="q-reference" class="md"></div>
+      <h3>해설</h3>
+      <div id="q-explanation" class="md"></div>
+      <div class="actions">
+        <button type="button" id="q-next" class="primary">다음 문제</button>
+        <button type="button" id="q-ask">더 물어보기</button>
+      </div>
+    </article>
+
+    <article id="tutor" class="card" hidden>
+      <h3>이 문제에 대해 묻기</h3>
+      <div id="tutor-log"></div>
+      <form id="tutor-form">
+        <textarea id="tutor-input" rows="3" placeholder="궁금한 점을 적어 주세요 (Ctrl+Enter 로 보내기)"></textarea>
+        <button type="submit" class="primary">보내기</button>
+      </form>
+    </article>
+  </section>
+
+  <section id="view-review" class="view" hidden>
+    <div class="card">
+      <p id="r-summary"></p>
+      <button type="button" id="r-start" class="primary">복습 시작</button>
+    </div>
+    <ul id="r-list" class="list"></ul>
+  </section>
+
+  <section id="view-records" class="view" hidden>
+    <div class="card">
+      <h3>분야별</h3>
+      <p id="s-empty" class="muted">아직 푼 문제가 없어요.</p>
+      <table id="s-table">
+        <thead><tr><th>분야</th><th class="num">푼 문제</th><th class="num">정답률</th><th class="num">부분 정답</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>최근에 푼 문제</h3>
+      <ul id="s-recent" class="list"></ul>
+    </div>
+  </section>
+
+  <section id="view-settings" class="view" hidden>
+    <div class="card">
+      <h3>Claude API</h3>
+      <label>API 키 <input type="password" id="set-key" autocomplete="off" placeholder="sk-ant-…"></label>
+      <label>모델 <select id="set-model"></select></label>
+      <p class="muted small">이 기기에서 쓴 금액 (추정): <span id="set-cost"></span>
+        <button type="button" id="set-cost-reset" class="link">초기화</button></p>
+    </div>
+
+    <div class="card">
+      <h3>GitHub 동기화</h3>
+      <label>저장소 (owner/name) <input id="set-repo" autocomplete="off" placeholder="my-id/study-data"></label>
+      <label>토큰 <input type="password" id="set-token" autocomplete="off" placeholder="github_pat_…"></label>
+      <label>파일 경로 <input id="set-path" autocomplete="off"></label>
+      <label>기기 이름 (커밋 메시지에 표시) <input id="set-device" autocomplete="off" placeholder="예: PC, 폰"></label>
+      <div class="actions">
+        <button type="button" id="set-sync">지금 동기화</button>
+        <span id="set-sync-status" class="muted small"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>다른 기기로 옮기기</h3>
+      <p class="muted small">API 키와 GitHub 설정을 QR 코드로 폰에 옮겨요.</p>
+      <button type="button" id="set-qr-show">QR 코드 보기</button>
+      <div id="set-qr" hidden>
+        <canvas id="set-qr-canvas"></canvas>
+        <p id="set-qr-note" class="small"></p>
+        <button type="button" id="set-qr-hide">숨기기</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>기록 백업</h3>
+      <div class="actions">
+        <button type="button" id="set-export">파일로 내보내기</button>
+        <label class="button">파일에서 합치기<input type="file" id="set-import" accept="application/json,.json" hidden></label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button type="button" data-view="quiz">풀기</button>
+  <button type="button" data-view="review">복습 <span id="review-badge" class="count" hidden></span></button>
+  <button type="button" data-view="records">기록</button>
+  <button type="button" data-view="settings">설정</button>
+</nav>
+
+<script>/*SCRIPT*/</script>
+</body>
+</html>
