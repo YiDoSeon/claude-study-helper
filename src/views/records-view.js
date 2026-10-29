@@ -3,6 +3,7 @@ import { $, h, formatDate } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { sourcesBlock } from '../chat-ui.js';
 import { list } from '../store.js';
+import { findItemForRecord, addFromRecord } from '../review.js';
 
 const VERDICT_LABEL = { correct: '정답', partial: '부분', wrong: '오답' };
 const RECENT_LIMIT = 50;
@@ -33,11 +34,18 @@ function mdBlock(text) {
   return el;
 }
 
+// 이 문제의 개념이 복습 목록에 없으면 넣는 버튼, 있으면 안내 글.
+function reviewAction(r) {
+  const item = findItemForRecord(r);
+  if (item && !item.done) return h('span', { class: 'muted small' }, '복습 목록에 있어요');
+  return h('button', { type: 'button', onclick: () => addFromRecord(r) }, item ? '복습에 다시 넣기' : '복습에 넣기');
+}
+
 function recordItem(r) {
   const q = r.question;
   const details = h(
     'details',
-    {},
+    { 'data-key': `record:${r.id}` },
     h(
       'summary',
       {},
@@ -64,6 +72,7 @@ function recordItem(r) {
         mdBlock(q.explanation),
         r.tutor?.length ? h('h4', {}, '더 물어본 내용') : '',
         ...(r.tutor ?? []).map(qaBlock),
+        h('div', { class: 'actions' }, reviewAction(r)),
       );
     },
     { once: true },
@@ -78,7 +87,7 @@ function qaBlock(t) {
 function chatItem(c) {
   const details = h(
     'details',
-    {},
+    { 'data-key': `chat:${c.id}` },
     h(
       'summary',
       {},
@@ -100,6 +109,18 @@ function chatItem(c) {
 }
 
 export function renderRecordsView() {
+  // 기록이 바뀌어 다시 그릴 때 펼쳐 둔 항목을 다시 펼친다.
+  const openKeys = new Set([...document.querySelectorAll('#view-records details[open]')].map((d) => d.dataset.key));
+  renderLists();
+  for (const details of document.querySelectorAll('#view-records details[data-key]')) {
+    if (openKeys.has(details.dataset.key)) {
+      details.open = true;
+      details.dispatchEvent(new Event('toggle'));
+    }
+  }
+}
+
+function renderLists() {
   const chats = list('chats').sort((a, b) => (b.updatedAt ?? b.at) - (a.updatedAt ?? a.at));
   $('#s-chats-card').hidden = chats.length === 0;
   $('#s-chats').replaceChildren(...chats.slice(0, CHAT_LIMIT).map(chatItem));

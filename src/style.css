@@ -176,8 +176,10 @@ label.check input { width: auto; margin: 0; }
 .list > li { padding: 10px 0; border-bottom: 1px solid var(--border); }
 .list > li:last-child { border-bottom: 0; }
 .list > li.due strong { color: var(--accent); }
-#r-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 16px; }
+#r-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 16px; margin-bottom: 12px; }
 #r-list:empty { display: none; }
+.actions.compact { margin-top: 6px; }
+.actions.compact button { min-height: 36px; padding: 4px 12px; font-size: 0.9rem; }
 details summary { cursor: pointer; }
 details[open] summary { margin-bottom: 8px; }
 details h4 { margin: 12px 0 4px; font-size: 0.85rem; color: var(--muted); }
@@ -211,8 +213,8 @@ th, td { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: l
   min-width: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--bad);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-text);
   font-size: 0.75rem;
   line-height: 20px;
 }

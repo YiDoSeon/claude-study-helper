@@ -6,8 +6,8 @@ import { TOPICS, DIFFICULTIES, QUESTION_TYPES, CUSTOM_CATEGORY_ID, CUSTOM_CATEGO
 import { generateQuestion, gradeChoice, gradeAnswer, tutorContext, askTutor } from '../quiz.js';
 import { describeError } from '../api.js';
 import { getSetting } from '../settings.js';
-import { put, list, newId } from '../store.js';
-import { applyResult, dueItems } from '../review.js';
+import { put, get, list, newId } from '../store.js';
+import { applyResult, dueItems, findItemForRecord, addFromRecord } from '../review.js';
 
 const VERDICT_LABEL = { correct: '정답', partial: '부분 정답', wrong: '오답' };
 const ADD_TOPIC = '__add__';
@@ -196,8 +196,20 @@ function renderResult(isChoice) {
   $('#q-submit').hidden = true;
   $('#q-giveup').hidden = true;
   $('#q-answer').readOnly = true;
+  $('#q-again').hidden = !current.review;
+  renderAddReviewButton();
   showPanels({ setup: false, card: true, result: true, tutor: false });
   $('#q-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// 복습 문제가 아니면 「복습에 넣기」 를 보인다. 이미 목록에 있으면 누를 수 없게 한다.
+function renderAddReviewButton() {
+  const button = $('#q-add-review');
+  const item = findItemForRecord(current.record);
+  const inList = !!item && !item.done;
+  button.hidden = !!current.review;
+  button.disabled = inList;
+  button.textContent = inList ? '복습 목록에 있어요' : '복습에 넣기';
 }
 
 function resetCardButtons() {
@@ -215,7 +227,7 @@ function next() {
     } else {
       current = null;
       showPanels({ setup: true, card: false, result: false, tutor: false });
-      setStatus('오늘 복습할 문제를 다 풀었어요.');
+      setStatus('추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.');
     }
     return;
   }
@@ -314,6 +326,11 @@ export function initQuizView() {
   $('#q-submit').addEventListener('click', () => submit(false));
   $('#q-giveup').addEventListener('click', () => submit(true));
   $('#q-next').addEventListener('click', next);
+  $('#q-again').addEventListener('click', () => startReview(get('reviews', current.review.id) ?? current.review));
+  $('#q-add-review').addEventListener('click', () => {
+    addFromRecord(current.record);
+    renderAddReviewButton();
+  });
   $('#q-change').addEventListener('click', () => {
     requestSeq++;
     current = null;

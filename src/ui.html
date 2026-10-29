@@ -60,7 +60,9 @@
       <div id="q-explanation" class="md"></div>
       <div class="actions">
         <button type="button" id="q-next" class="primary">다음 문제</button>
+        <button type="button" id="q-again">같은 개념 한 번 더</button>
         <button type="button" id="q-ask">더 물어보기</button>
+        <button type="button" id="q-add-review">복습에 넣기</button>
       </div>
     </article>
 
@@ -96,9 +98,13 @@
   <section id="view-review" class="view" hidden>
     <div class="card">
       <p id="r-summary"></p>
-      <button type="button" id="r-start" class="primary">복습 시작</button>
+      <button type="button" id="r-start" class="primary">추천 복습 차례로 풀기</button>
     </div>
     <ul id="r-list" class="list"></ul>
+    <details id="r-off-card" class="card" hidden>
+      <summary>목록에서 빠진 개념 <span id="r-off-count" class="muted"></span>개</summary>
+      <ul id="r-off" class="list"></ul>
+    </details>
   </section>
 
   <section id="view-records" class="view" hidden>
