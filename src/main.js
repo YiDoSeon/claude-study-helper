@@ -4,7 +4,7 @@ import { importSetupFromHash, hasAnthropicKey } from './settings.js';
 import { onChange } from './store.js';
 import { startAutoSync, onStatus } from './sync.js';
 import { initQuizView, startReview, startFromChat } from './views/quiz-view.js';
-import { initAskView, resumeChat } from './views/ask-view.js';
+import { initAskView, resumeChat, continueFromRecord } from './views/ask-view.js';
 import { initReviewView, renderReviewView } from './views/review-view.js';
 import { initRecordsView, renderRecordsView } from './views/records-view.js';
 import { initSettingsView, renderSettingsView } from './views/settings-view.js';
@@ -43,7 +43,11 @@ function updateKeyNotice() {
 function init() {
   const imported = importSetupFromHash();
 
-  initQuizView();
+  const continueInAsk = (record) => {
+    showView('ask');
+    continueFromRecord(record);
+  };
+  initQuizView({ onContinueInAsk: continueInAsk });
   initReviewView({
     onStart: (item) => {
       showView('quiz');
@@ -61,6 +65,7 @@ function init() {
       showView('ask');
       resumeChat(chat);
     },
+    onContinue: continueInAsk,
   });
   initSettingsView({ onKeyChange: updateKeyNotice });
 

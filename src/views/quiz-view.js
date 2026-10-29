@@ -295,7 +295,7 @@ async function sendTutor(event) {
 
 // ── 초기화 ────────────────────────────────────────────
 
-export function initQuizView() {
+export function initQuizView({ onContinueInAsk }) {
   const saved = remember('quizSetup') ?? {};
   fillCategories(saved.category);
   fillSubtopics(saved.sub);
@@ -340,6 +340,9 @@ export function initQuizView() {
   });
   $('#q-ask').addEventListener('click', openTutor);
   $('#tutor-form').addEventListener('submit', sendTutor);
+  $('#tutor-to-ask').addEventListener('click', () => {
+    if (current?.record) onContinueInAsk(current.record);
+  });
   $('#tutor-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#tutor-form').requestSubmit();
   });

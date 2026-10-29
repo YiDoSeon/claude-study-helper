@@ -10,9 +10,11 @@ const RECENT_LIMIT = 50;
 const CHAT_LIMIT = 30;
 
 let onResumeChat = () => {};
+let onContinueRecord = () => {};
 
-export function initRecordsView({ onResume }) {
+export function initRecordsView({ onResume, onContinue }) {
   onResumeChat = onResume;
+  onContinueRecord = onContinue;
 }
 
 function statsByCategory(records) {
@@ -72,7 +74,12 @@ function recordItem(r) {
         mdBlock(q.explanation),
         r.tutor?.length ? h('h4', {}, '더 물어본 내용') : '',
         ...(r.tutor ?? []).map(qaBlock),
-        h('div', { class: 'actions' }, reviewAction(r)),
+        h(
+          'div',
+          { class: 'actions' },
+          h('button', { type: 'button', onclick: () => onContinueRecord(r) }, '이 문제로 묻기'),
+          reviewAction(r),
+        ),
       );
     },
     { once: true },
