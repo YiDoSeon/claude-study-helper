@@ -1,6 +1,7 @@
 // 「풀기」 화면: 분야 고르기, 문제 풀기, 채점 결과, 튜터 대화.
 import { $, h, fillSelect, remember } from '../dom.js';
 import { renderMarkdown, renderCode } from '../markdown.js';
+import { appendBubble, streamInto, showBubbleError } from '../chat-ui.js';
 import { TOPICS, DIFFICULTIES, QUESTION_TYPES, CUSTOM_CATEGORY_ID, CUSTOM_CATEGORY_LABEL } from '../topics.js';
 import { generateQuestion, gradeChoice, gradeAnswer, tutorContext, askTutor } from '../quiz.js';
 import { describeError } from '../api.js';
@@ -11,7 +12,7 @@ import { applyResult, dueItems } from '../review.js';
 const VERDICT_LABEL = { correct: '정답', partial: '부분 정답', wrong: '오답' };
 const ADD_TOPIC = '__add__';
 
-let current = null; // { topic, difficulty, type, question, review, record, chosen, tutor }
+let current = null; // { topic, difficulty, type, question, review, context, record, chosen, tutor }
 let requestSeq = 0;
 
 function customTopics() {
@@ -87,6 +88,7 @@ async function startQuestion(opts) {
       type: opts.type,
       avoidConcepts: opts.review ? [] : recentConcepts(opts.topic),
       review: opts.review,
+      chatContext: opts.context,
     });
     if (seq !== requestSeq) return; // 그사이 다른 문제를 요청했다.
     current.question = question;
@@ -217,12 +219,24 @@ function next() {
     }
     return;
   }
-  startQuestion({ topic: current.topic, difficulty: current.difficulty, type: current.type, review: null });
+  startQuestion({
+    topic: current.topic,
+    difficulty: current.difficulty,
+    type: current.type,
+    review: null,
+    context: current.context,
+  });
 }
 
 export function startReview(item) {
   resetCardButtons();
   startQuestion({ topic: item.topic, difficulty: item.difficulty, type: 'auto', review: item });
+}
+
+// 「묻기」 대화에서 다룬 개념으로 문제를 낸다. 난이도와 형식은 풀기 화면에 고른 값을 쓴다.
+export function startFromChat({ topic, context }) {
+  resetCardButtons();
+  startQuestion({ topic, difficulty: $('#q-difficulty').value, type: $('#q-type').value, review: null, context });
 }
 
 // ── 튜터 ──────────────────────────────────────────────
@@ -234,15 +248,6 @@ function openTutor() {
   $('#tutor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function appendBubble(role, text) {
-  const body = h('div', { class: 'md' });
-  if (role === 'user') body.textContent = text;
-  else renderMarkdown(body, text);
-  const bubble = h('div', { class: `bubble ${role}` }, body);
-  $('#tutor-log').append(bubble);
-  return body;
-}
-
 async function sendTutor(event) {
   event.preventDefault();
   const input = $('#tutor-input');
@@ -252,40 +257,25 @@ async function sendTutor(event) {
   const content = tutor.messages.length === 0 ? `${tutorContext(current.record)}\n\n## 질문\n${text}` : text;
   tutor.messages.push({ role: 'user', content });
   input.value = '';
-  appendBubble('user', text);
-  const body = appendBubble('assistant', '…');
+  appendBubble($('#tutor-log'), 'user', text);
+  const body = appendBubble($('#tutor-log'), 'assistant', '…');
   const button = $('#tutor-form button');
   button.disabled = true;
 
-  let acc = '';
-  let frame = 0;
   try {
-    const message = await askTutor({
-      messages: tutor.messages,
-      onText: (delta) => {
-        acc += delta;
-        if (!frame) {
-          frame = requestAnimationFrame(() => {
-            frame = 0;
-            renderMarkdown(body, acc);
-          });
-        }
-      },
-    });
-    cancelAnimationFrame(frame);
-    renderMarkdown(body, acc);
+    const { message, text: answer } = await streamInto(body, (onText) =>
+      askTutor({ messages: tutor.messages, onText }),
+    );
     // thinking 블록까지 포함한 content 전체를 그대로 이어 붙인다.
     tutor.messages.push({ role: 'assistant', content: message.content });
     // 기록에는 화면에 보인 질문과 답 글만 남긴다.
     current.record = put('records', {
       ...current.record,
-      tutor: [...(current.record.tutor ?? []), { q: text, a: acc, at: Date.now() }],
+      tutor: [...(current.record.tutor ?? []), { q: text, a: answer, at: Date.now() }],
     });
   } catch (err) {
-    cancelAnimationFrame(frame);
     tutor.messages.pop();
-    body.textContent = describeError(err);
-    body.parentElement.classList.add('error');
+    showBubbleError(body, describeError(err));
   } finally {
     button.disabled = false;
   }

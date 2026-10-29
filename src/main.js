@@ -3,13 +3,15 @@ import { $ } from './dom.js';
 import { importSetupFromHash, hasAnthropicKey } from './settings.js';
 import { onChange } from './store.js';
 import { startAutoSync, onStatus } from './sync.js';
-import { initQuizView, startReview } from './views/quiz-view.js';
+import { initQuizView, startReview, startFromChat } from './views/quiz-view.js';
+import { initAskView, resumeChat } from './views/ask-view.js';
 import { initReviewView, renderReviewView } from './views/review-view.js';
-import { renderRecordsView } from './views/records-view.js';
+import { initRecordsView, renderRecordsView } from './views/records-view.js';
 import { initSettingsView, renderSettingsView } from './views/settings-view.js';
 
 const RENDERERS = {
   quiz: () => {},
+  ask: () => {},
   review: renderReviewView,
   records: renderRecordsView,
   settings: renderSettingsView,
@@ -48,6 +50,18 @@ function init() {
       startReview(item);
     },
   });
+  initAskView({
+    onQuiz: (chat) => {
+      showView('quiz');
+      startFromChat(chat);
+    },
+  });
+  initRecordsView({
+    onResume: (chat) => {
+      showView('ask');
+      resumeChat(chat);
+    },
+  });
   initSettingsView({ onKeyChange: updateKeyNotice });
 
   for (const tab of document.querySelectorAll('nav [data-view]')) {
@@ -62,7 +76,7 @@ function init() {
   });
   onChange(() => {
     updateReviewBadge();
-    if (activeView !== 'quiz' && activeView !== 'settings') RENDERERS[activeView]();
+    if (activeView === 'review' || activeView === 'records') RENDERERS[activeView]();
   });
 
   updateKeyNotice();

@@ -52,11 +52,20 @@ const TUTOR_SYSTEM = `너는 프로그래밍과 컴퓨터 과학 튜터다. 학�
 - 답은 짧게 시작하고, 학습자가 더 물으면 깊이 들어간다.
 - 한국어로 답한다. 코드와 식별자는 원래 글자로 둔다. Markdown 을 쓸 수 있다.`;
 
+const FREE_TUTOR_SYSTEM = `너는 프로그래밍과 컴퓨터 과학 튜터다. 학습자가 궁금한 것을 자유롭게 묻는다.
+
+- 개념의 원리를 먼저 설명하고, 필요하면 작은 예시나 코드로 보여 준다.
+- 질문에 오해가 섞여 있으면 그 오해가 왜 생기기 쉬운지와 함께 바로잡는다.
+- 답은 짧게 시작하고, 학습자가 더 물으면 깊이 들어간다.
+- 한국어로 답한다. 코드와 식별자는 원래 글자로 둔다. Markdown 을 쓸 수 있다.`;
+
+const CHAT_CONTEXT_LIMIT = 6000;
+
 function describeTopic(topic) {
   return [...topic.path, topic.detail].filter(Boolean).join(' > ');
 }
 
-export async function generateQuestion({ topic, difficulty, type, avoidConcepts = [], review = null }) {
+export async function generateQuestion({ topic, difficulty, type, avoidConcepts = [], review = null, chatContext = null }) {
   const lines = [`분야: ${describeTopic(topic)}`, `난이도: ${difficulty}`];
   lines.push(type === 'auto' ? '문제 형식: 주제에 가장 잘 맞는 형식을 골라라.' : `문제 형식: ${type}`);
   if (review) {
@@ -67,7 +76,17 @@ export async function generateQuestion({ topic, difficulty, type, avoidConcepts 
       `예전 문제: ${review.lastPrompt}`,
       '같은 개념을 다른 각도나 다른 예시로 묻는 새 문제를 내라. 예전 문제를 그대로 되풀이하지 마라.',
     );
-  } else if (avoidConcepts.length) {
+  }
+  if (chatContext) {
+    lines.push(
+      '',
+      '학습자가 튜터와 아래 대화를 나눴다. 이 대화에서 다룬 개념을 제대로 이해했는지 확인하는 문제를 내라.',
+      '<conversation>',
+      chatContext,
+      '</conversation>',
+    );
+  }
+  if (!review && avoidConcepts.length) {
     lines.push('', '최근에 이미 낸 개념이다. 겹치지 않게 다른 개념을 골라라:', ...avoidConcepts.map((c) => `- ${c}`));
   }
   return callJson({ system: QUESTION_SYSTEM, user: lines.join('\n'), schema: QuestionSchema, effort: 'medium' });
@@ -117,4 +136,14 @@ export function tutorContext(record) {
 
 export function askTutor({ messages, onText }) {
   return streamChat({ system: TUTOR_SYSTEM, messages, effort: 'medium', onText });
+}
+
+export function askFree({ messages, onText }) {
+  return streamChat({ system: FREE_TUTOR_SYSTEM, messages, effort: 'medium', onText });
+}
+
+// 「묻기」 대화를 출제용 맥락 글로 바꾼다. 길면 최근 대화를 남긴다.
+export function chatToContext(history) {
+  const text = history.map((t) => `학습자: ${t.q}\n튜터: ${t.a}`).join('\n\n');
+  return text.length > CHAT_CONTEXT_LIMIT ? `…${text.slice(-CHAT_CONTEXT_LIMIT)}` : text;
 }

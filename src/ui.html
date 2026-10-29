@@ -66,12 +66,30 @@
 
     <article id="tutor" class="card" hidden>
       <h3>이 문제에 대해 묻기</h3>
-      <div id="tutor-log"></div>
-      <form id="tutor-form">
+      <div id="tutor-log" class="chat-log"></div>
+      <form id="tutor-form" class="chat-form">
         <textarea id="tutor-input" rows="3" placeholder="궁금한 점을 적어 주세요 (Ctrl+Enter 로 보내기)"></textarea>
         <button type="submit" class="primary">보내기</button>
       </form>
     </article>
+  </section>
+
+  <section id="view-ask" class="view" hidden>
+    <div class="card">
+      <div class="row">
+        <label>분야 (선택) <select id="a-category"></select></label>
+      </div>
+      <p id="a-empty" class="muted small">궁금한 것을 바로 물어보세요. 대화가 끝나면 그 내용으로 문제를 풀어 볼 수 있어요.</p>
+      <div id="a-log" class="chat-log"></div>
+      <form id="a-form" class="chat-form">
+        <textarea id="a-input" rows="3" placeholder="예: TCP 3-way handshake 가 왜 3번이어야 해? (Ctrl+Enter 로 보내기)"></textarea>
+        <button type="submit" class="primary">보내기</button>
+      </form>
+      <div class="actions">
+        <button type="button" id="a-quiz" class="primary" hidden>이 내용으로 문제 풀기</button>
+        <button type="button" id="a-new" hidden>새 대화</button>
+      </div>
+    </div>
   </section>
 
   <section id="view-review" class="view" hidden>
@@ -94,6 +112,10 @@
     <div class="card">
       <h3>최근에 푼 문제</h3>
       <ul id="s-recent" class="list"></ul>
+    </div>
+    <div id="s-chats-card" class="card" hidden>
+      <h3>묻기 대화</h3>
+      <ul id="s-chats" class="list"></ul>
     </div>
   </section>
 
@@ -141,6 +163,7 @@
 
 <nav class="tabs">
   <button type="button" data-view="quiz">풀기</button>
+  <button type="button" data-view="ask">묻기</button>
   <button type="button" data-view="review">복습 <span id="review-badge" class="count" hidden></span></button>
   <button type="button" data-view="records">기록</button>
   <button type="button" data-view="settings">설정</button>

@@ -1,10 +1,17 @@
-// 「기록」 화면: 분야별 정답률과 최근에 푼 문제.
+// 「기록」 화면: 분야별 정답률, 최근에 푼 문제, 「묻기」 대화.
 import { $, h, formatDate } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { list } from '../store.js';
 
 const VERDICT_LABEL = { correct: '정답', partial: '부분', wrong: '오답' };
 const RECENT_LIMIT = 50;
+const CHAT_LIMIT = 30;
+
+let onResumeChat = () => {};
+
+export function initRecordsView({ onResume }) {
+  onResumeChat = onResume;
+}
 
 function statsByCategory(records) {
   const byCat = new Map();
@@ -55,9 +62,35 @@ function recordItem(r) {
         h('h4', {}, '해설'),
         mdBlock(q.explanation),
         r.tutor?.length ? h('h4', {}, '더 물어본 내용') : '',
-        ...(r.tutor ?? []).map((t) =>
-          h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a)),
-        ),
+        ...(r.tutor ?? []).map(qaBlock),
+      );
+    },
+    { once: true },
+  );
+  return h('li', {}, details);
+}
+
+function qaBlock(t) {
+  return h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a));
+}
+
+function chatItem(c) {
+  const details = h(
+    'details',
+    {},
+    h(
+      'summary',
+      {},
+      h('strong', {}, c.title),
+      h('span', { class: 'muted small' }, ` · ${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
+    ),
+  );
+  details.addEventListener(
+    'toggle',
+    () => {
+      details.append(
+        ...c.history.map(qaBlock),
+        h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, '이어서 묻기')),
       );
     },
     { once: true },
@@ -66,6 +99,10 @@ function recordItem(r) {
 }
 
 export function renderRecordsView() {
+  const chats = list('chats').sort((a, b) => (b.updatedAt ?? b.at) - (a.updatedAt ?? a.at));
+  $('#s-chats-card').hidden = chats.length === 0;
+  $('#s-chats').replaceChildren(...chats.slice(0, CHAT_LIMIT).map(chatItem));
+
   const records = list('records').sort((a, b) => b.at - a.at);
   const stats = statsByCategory(records);
   $('#s-empty').hidden = records.length > 0;
