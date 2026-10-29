@@ -276,6 +276,11 @@ async function sendTutor(event) {
     renderMarkdown(body, acc);
     // thinking 블록까지 포함한 content 전체를 그대로 이어 붙인다.
     tutor.messages.push({ role: 'assistant', content: message.content });
+    // 기록에는 화면에 보인 질문과 답 글만 남긴다.
+    current.record = put('records', {
+      ...current.record,
+      tutor: [...(current.record.tutor ?? []), { q: text, a: acc, at: Date.now() }],
+    });
   } catch (err) {
     cancelAnimationFrame(frame);
     tutor.messages.pop();

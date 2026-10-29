@@ -54,6 +54,10 @@ function recordItem(r) {
         mdBlock(q.choices.length ? `${q.answer_index + 1}. ${q.choices[q.answer_index]}` : q.answer),
         h('h4', {}, '해설'),
         mdBlock(q.explanation),
+        r.tutor?.length ? h('h4', {}, '더 물어본 내용') : '',
+        ...(r.tutor ?? []).map((t) =>
+          h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a)),
+        ),
       );
     },
     { once: true },
