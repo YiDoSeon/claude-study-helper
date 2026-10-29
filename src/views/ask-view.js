@@ -1,14 +1,23 @@
 // 「묻기」 화면: 문제 없이 질문으로 시작하는 튜터 대화.
-import { $, fillSelect } from '../dom.js';
-import { appendBubble, streamInto, showBubbleError } from '../chat-ui.js';
+import { $, fillSelect, remember } from '../dom.js';
+import { appendBubble, appendSources, streamInto, showBubbleError } from '../chat-ui.js';
 import { TOPICS } from '../topics.js';
 import { askFree, chatToContext } from '../quiz.js';
 import { describeError } from '../api.js';
+import { collectSources, hasSearchBlocks } from '../web-search.js';
 import { put, newId } from '../store.js';
 
 const FREE_CATEGORY = '자유 질문';
 
-// { id, at, title, category, history: [{ q, a, at }], messages: API 에 보낼 대화 }
+// 저장된 글만으로 API 에 보낼 대화를 만든다. thinking 블록과 검색 블록은 들어가지 않는다.
+function textMessages(history) {
+  return history.flatMap((t) => [
+    { role: 'user', content: t.q },
+    { role: 'assistant', content: t.a },
+  ]);
+}
+
+// { id, at, title, category, history: [{ q, a, at, sources? }], messages: API 에 보낼 대화 }
 let chat = null;
 let onQuizCallback = () => {};
 
@@ -40,6 +49,9 @@ async function send(event) {
     history: [],
     messages: [],
   };
+  const webSearch = $('#a-web').checked;
+  // 검색을 끈 채로 보내면 도구 정의가 없어 이전 검색 블록이 거절되므로, 저장된 글로 대화를 다시 만든다.
+  if (!webSearch && hasSearchBlocks(chat.messages)) chat.messages = textMessages(chat.history);
   chat.messages.push({ role: 'user', content: text });
   input.value = '';
   renderChrome();
@@ -49,10 +61,14 @@ async function send(event) {
   button.disabled = true;
 
   try {
-    const { message, text: answer } = await streamInto(body, (onText) => askFree({ messages: chat.messages, onText }));
-    // thinking 블록까지 포함한 content 전체를 그대로 이어 붙인다.
+    const { message, text: answer } = await streamInto(body, (onText) =>
+      askFree({ messages: chat.messages, webSearch, onText }),
+    );
+    // thinking 블록과 검색 블록까지 포함한 content 전체를 그대로 이어 붙인다.
     chat.messages.push({ role: 'assistant', content: message.content });
-    chat.history.push({ q: text, a: answer, at: Date.now() });
+    const sources = collectSources(message.content);
+    appendSources(body, sources);
+    chat.history.push({ q: text, a: answer, at: Date.now(), ...(sources.length && { sources }) });
     const { messages, ...saved } = chat;
     put('chats', saved);
   } catch (err) {
@@ -77,16 +93,13 @@ export function resumeChat(saved) {
   chat = {
     ...saved,
     history: [...saved.history],
-    messages: saved.history.flatMap((t) => [
-      { role: 'user', content: t.q },
-      { role: 'assistant', content: t.a },
-    ]),
+    messages: textMessages(saved.history),
   };
   $('#a-category').value = saved.category ?? '';
   $('#a-log').replaceChildren();
   for (const t of saved.history) {
     appendBubble($('#a-log'), 'user', t.q);
-    appendBubble($('#a-log'), 'assistant', t.a);
+    appendSources(appendBubble($('#a-log'), 'assistant', t.a), t.sources);
   }
   renderChrome();
 }
@@ -106,6 +119,8 @@ export function initAskView({ onQuiz }) {
       put('chats', saved);
     }
   });
+  $('#a-web').checked = remember('askWebSearch') === true;
+  $('#a-web').addEventListener('change', () => remember('askWebSearch', $('#a-web').checked));
   $('#a-form').addEventListener('submit', send);
   $('#a-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#a-form').requestSubmit();

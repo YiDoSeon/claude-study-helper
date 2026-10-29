@@ -57,6 +57,7 @@ const FREE_TUTOR_SYSTEM = `너는 프로그래밍과 컴퓨터 과학 튜터다.
 - 개념의 원리를 먼저 설명하고, 필요하면 작은 예시나 코드로 보여 준다.
 - 질문에 오해가 섞여 있으면 그 오해가 왜 생기기 쉬운지와 함께 바로잡는다.
 - 답은 짧게 시작하고, 학습자가 더 물으면 깊이 들어간다.
+- 웹 검색 도구가 주어지면 최신 버전, 공식 문서, 표준 명세처럼 확인이 필요한 내용에만 검색한다. 잘 알려진 개념은 검색 없이 설명한다.
 - 한국어로 답한다. 코드와 식별자는 원래 글자로 둔다. Markdown 을 쓸 수 있다.`;
 
 const CHAT_CONTEXT_LIMIT = 6000;
@@ -138,8 +139,8 @@ export function askTutor({ messages, onText }) {
   return streamChat({ system: TUTOR_SYSTEM, messages, effort: 'medium', onText });
 }
 
-export function askFree({ messages, onText }) {
-  return streamChat({ system: FREE_TUTOR_SYSTEM, messages, effort: 'medium', onText });
+export function askFree({ messages, webSearch, onText }) {
+  return streamChat({ system: FREE_TUTOR_SYSTEM, messages, effort: 'medium', webSearch, onText });
 }
 
 // 「묻기」 대화를 출제용 맥락 글로 바꾼다. 길면 최근 대화를 남긴다.

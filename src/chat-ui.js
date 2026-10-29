@@ -34,6 +34,21 @@ export async function streamInto(body, run) {
   }
 }
 
+// 웹 검색 출처 링크 목록. sources 는 [{ url, title }] 이고, 없으면 null.
+export function sourcesBlock(sources) {
+  if (!sources?.length) return null;
+  const links = sources.map(({ url, title }) =>
+    h('li', {}, h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, title)),
+  );
+  return h('div', { class: 'sources' }, h('p', { class: 'muted small' }, '출처'), h('ol', {}, links));
+}
+
+// 출처 목록을 말풍선 아래에 붙인다.
+export function appendSources(body, sources) {
+  const block = sourcesBlock(sources);
+  if (block) body.parentElement.append(block);
+}
+
 export function showBubbleError(body, message) {
   body.textContent = message;
   body.parentElement.classList.add('error');

@@ -1,6 +1,7 @@
 // 「기록」 화면: 분야별 정답률, 최근에 푼 문제, 「묻기」 대화.
 import { $, h, formatDate } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
+import { sourcesBlock } from '../chat-ui.js';
 import { list } from '../store.js';
 
 const VERDICT_LABEL = { correct: '정답', partial: '부분', wrong: '오답' };
@@ -71,7 +72,7 @@ function recordItem(r) {
 }
 
 function qaBlock(t) {
-  return h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a));
+  return h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a), sourcesBlock(t.sources));
 }
 
 function chatItem(c) {
