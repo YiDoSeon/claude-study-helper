@@ -69,7 +69,7 @@ function recordItem(r) {
         h('p', {}, r.userAnswer || '(모르겠어요)'),
         r.feedback ? mdBlock(r.feedback) : '',
         h('h4', {}, '모범 답안'),
-        mdBlock(q.choices.length ? `${q.answer_index + 1}. ${q.choices[q.answer_index]}` : q.answer),
+        mdBlock(q.choices.length ? `${q.answer_index + 1}\\. ${q.choices[q.answer_index]}` : q.answer),
         h('h4', {}, '해설'),
         mdBlock(q.explanation),
         r.tutor?.length ? h('h4', {}, '더 물어본 내용') : '',

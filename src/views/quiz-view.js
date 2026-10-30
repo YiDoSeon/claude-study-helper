@@ -183,7 +183,8 @@ function renderResult(isChoice) {
   verdict.textContent = VERDICT_LABEL[record.verdict];
   verdict.className = `verdict ${record.verdict}`;
   renderMarkdown($('#q-feedback'), record.feedback);
-  renderMarkdown($('#q-reference'), isChoice ? `${q.answer_index + 1}. ${q.choices[q.answer_index]}` : q.answer);
+  // 「2. …」 가 번호 목록으로 렌더링되지 않게 마침표를 이스케이프한다.
+  renderMarkdown($('#q-reference'), isChoice ? `${q.answer_index + 1}\\. ${q.choices[q.answer_index]}` : q.answer);
   renderMarkdown($('#q-explanation'), q.explanation);
   if (isChoice) {
     for (const btn of $('#q-choices').children) {
