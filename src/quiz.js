@@ -1,6 +1,6 @@
 // 문제 출제, 채점, 튜터 대화의 프롬프트와 응답 형식.
 import { z } from 'zod';
-import { callJson, streamChat } from './api.js';
+import { callJson, streamChat, FormatError } from './api.js';
 
 const QuestionSchema = z.object({
   type: z.enum(['multiple_choice', 'short_answer', 'code_reading', 'explain']),
@@ -30,7 +30,7 @@ const QUESTION_SYSTEM = `너는 프로그래밍과 컴퓨터 과학을 가르치
 필드 규칙:
 - type: multiple_choice, short_answer, code_reading, explain 중 하나.
 - concept: 이 문제가 확인하는 개념을 20자 안팎으로 적는다. 복습 목록에 쓰인다.
-- prompt: 문제 본문. Markdown 을 쓸 수 있다. 코드는 넣지 않고 code 필드에 둔다.
+- prompt: 문제 본문. Markdown 을 쓸 수 있다. 코드는 넣지 않고 code 필드에 둔다. 묻는 말은 type 에 맞춘다. 「고르시오」 는 multiple_choice 에만 쓴다. 보기가 없는 형식은 답을 직접 쓰게 묻는다. code_reading 은 「출력 결과를 쓰시오」 처럼 결과를, short_answer 는 단어나 값 하나를, explain 은 이유나 과정을 쓰게 한다.
 - code: 문제에 딸린 코드. 없으면 빈 문자열. code_language 는 그 언어 이름이고, 코드가 없으면 빈 문자열.
 - choices: 객관식 보기 4개. 객관식이 아니면 빈 배열.
 - answer_index: 객관식 정답의 0부터 센 위치. 객관식이 아니면 -1.
@@ -90,7 +90,34 @@ export async function generateQuestion({ topic, difficulty, type, avoidConcepts 
   if (!review && avoidConcepts.length) {
     lines.push('', '최근에 이미 낸 개념이다. 겹치지 않게 다른 개념을 골라라:', ...avoidConcepts.map((c) => `- ${c}`));
   }
-  return callJson({ system: QUESTION_SYSTEM, user: lines.join('\n'), schema: QuestionSchema, effort: 'medium' });
+  const user = lines.join('\n');
+  const question = await callJson({ system: QUESTION_SYSTEM, user, schema: QuestionSchema, effort: 'medium' });
+  const problem = formatProblem(question);
+  if (!problem) return question;
+  // 어긋난 점을 알려 주고 한 번만 다시 낸다.
+  const retry = await callJson({
+    system: QUESTION_SYSTEM,
+    user: `${user}\n\n앞서 낸 문제는 형식이 어긋났다: ${problem}\n필드 규칙대로 새로 내라.`,
+    schema: QuestionSchema,
+    effort: 'medium',
+  });
+  const retryProblem = formatProblem(retry);
+  if (retryProblem) throw new FormatError(retryProblem);
+  return retry;
+}
+
+// type 과 choices, prompt 가 어긋난 점을 문장으로 돌려준다. 맞으면 null.
+function formatProblem(q) {
+  if (q.type === 'multiple_choice') {
+    if (q.choices.length !== 4) return `multiple_choice 인데 보기가 ${q.choices.length}개다. 보기를 4개 넣어라.`;
+    if (q.answer_index < 0 || q.answer_index >= q.choices.length) return 'answer_index 가 보기 범위를 벗어났다.';
+    return null;
+  }
+  if (q.choices.length) return `${q.type} 인데 보기가 있다. 객관식이 아니면 choices 는 빈 배열이다.`;
+  if (/고르(시오|세요|십시오|라)|골라/.test(q.prompt)) {
+    return `${q.type} 이라 보기가 없는데 prompt 가 「고르시오」 로 묻는다. 답을 직접 쓰게 묻는 문장으로 바꿔라.`;
+  }
+  return null;
 }
 
 export function gradeChoice(question, index) {
