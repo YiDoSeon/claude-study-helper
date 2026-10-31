@@ -52,6 +52,9 @@ function updateKeyNotice() {
 
 function init() {
   const imported = importSetupFromHash();
+  // 기록 상세 화면과 질문 목록이 넣은 방문 기록으로 뒤로 갈 때의 스크롤 위치는 각자 되돌린다
+  // (records-view.js, chat-nav.js). 브라우저가 따로 되돌려 섞이지 않게 끈다.
+  history.scrollRestoration = 'manual';
 
   const continueInAsk = (record) => {
     showView('ask');

@@ -2,7 +2,7 @@
 import { $, h, formatDate } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { sourcesBlock, metaLine } from '../chat-ui.js';
-import { attachChatNav } from '../chat-nav.js';
+import { attachChatNav, hideChatNavPanels } from '../chat-nav.js';
 import { list } from '../store.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
 
@@ -165,7 +165,7 @@ function openDetail(target) {
   renderDetail();
   $('#s-lists').hidden = true;
   $('#s-detail').hidden = false;
-  history.pushState({ recordsDetail: true }, '');
+  history.pushState({ recordsDetail: true, depth: 1 }, '');
   window.scrollTo(0, 0);
 }
 
@@ -177,20 +177,26 @@ function closeDetail() {
   window.scrollTo(0, listScrollY);
 }
 
+// 상세 화면을 연 뒤 쌓인 방문 기록 (상세 화면 하나 + 질문 목록이 넣은 것) 을 한 번에 지운다.
+// 지우고 나면 popstate 에서 닫힌다. 지울 기록이 없으면 false.
+function popDetailHistory() {
+  if (!history.state?.recordsDetail) return false;
+  hideChatNavPanels();
+  history.go(-(history.state.depth ?? 1));
+  return true;
+}
+
 function backToList() {
-  // openDetail 이 넣은 방문 기록을 지우면 popstate 에서 닫힌다.
-  if (history.state?.recordsDetail) history.back();
-  else closeDetail();
+  if (!popDetailHistory()) closeDetail();
 }
 
 // 상세 화면에서 다른 화면으로 넘어갈 때 쓴다. 목록 스크롤 위치로 돌아가지 않는다.
 function leaveDetail(then) {
   return () => {
-    const fromDetail = history.state?.recordsDetail;
     opened = null;
     $('#s-detail').hidden = true;
     $('#s-lists').hidden = false;
-    if (fromDetail) history.back();
+    popDetailHistory();
     then();
   };
 }
