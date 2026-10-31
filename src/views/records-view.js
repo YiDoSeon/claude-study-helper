@@ -2,7 +2,7 @@
 import { $, h, formatDate } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { sourcesBlock, metaLine } from '../chat-ui.js';
-import { attachChatNav, hideChatNavPanels } from '../chat-nav.js';
+import { attachChatNav } from '../chat-nav.js';
 import { list } from '../store.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
 
@@ -12,18 +12,17 @@ const CHAT_LIMIT = 30;
 
 let onResumeChat = () => {};
 let onContinueRecord = () => {};
+let onOpenDetail = () => {};
 // 상세 화면에 연 항목. { kind: 'record' | 'chat', id } 이고, 목록을 보고 있으면 null.
 let opened = null;
-let listScrollY = 0;
 
-export function initRecordsView({ onResume, onContinue }) {
+// 상세 화면을 여닫는 것은 방문 기록에 남도록 main.js 가 router 로 처리한다.
+// onOpen(target) 은 항목을 눌렀을 때, onBack() 은 「← 목록으로」 를 눌렀을 때 부른다.
+export function initRecordsView({ onResume, onContinue, onOpen, onBack }) {
   onResumeChat = onResume;
   onContinueRecord = onContinue;
-  $('#s-back').addEventListener('click', backToList);
-  // 폰의 뒤로 가기로도 목록으로 돌아간다.
-  window.addEventListener('popstate', () => {
-    if (opened && !history.state?.recordsDetail) closeDetail();
-  });
+  onOpenDetail = onOpen;
+  $('#s-back').addEventListener('click', onBack);
   attachChatNav($('#s-detail-body'), { questionSelector: '.qa-q' });
 }
 
@@ -65,7 +64,7 @@ function recordRow(r) {
     {},
     h(
       'button',
-      { type: 'button', class: 'record-row', 'data-key': `record:${r.id}`, onclick: () => openDetail({ kind: 'record', id: r.id }) },
+      { type: 'button', class: 'record-row', 'data-key': `record:${r.id}`, onclick: () => onOpenDetail({ kind: 'record', id: r.id }) },
       h('span', { class: `pill ${r.verdict}` }, VERDICT_LABEL[r.verdict]),
       ' ',
       h('strong', {}, r.question.concept),
@@ -80,7 +79,7 @@ function chatRow(c) {
     {},
     h(
       'button',
-      { type: 'button', class: 'record-row', 'data-key': `chat:${c.id}`, onclick: () => openDetail({ kind: 'chat', id: c.id }) },
+      { type: 'button', class: 'record-row', 'data-key': `chat:${c.id}`, onclick: () => onOpenDetail({ kind: 'chat', id: c.id }) },
       h('strong', {}, c.title),
       h('span', { class: 'muted small' }, ` · ${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
     ),
@@ -134,7 +133,7 @@ function recordDetail(r) {
     h(
       'div',
       { class: 'actions' },
-      h('button', { type: 'button', onclick: leaveDetail(() => onContinueRecord(r)) }, '이 문제로 묻기'),
+      h('button', { type: 'button', onclick: () => onContinueRecord(r) }, '이 문제로 묻기'),
       reviewAction(r),
     ),
   ];
@@ -145,7 +144,7 @@ function chatDetail(c) {
     h('h2', { class: 'detail-title' }, c.title),
     h('p', { class: 'muted small' }, `${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
     ...c.history.map(qaBlock),
-    h('div', { class: 'actions' }, h('button', { type: 'button', onclick: leaveDetail(() => onResumeChat(c)) }, '이어서 묻기')),
+    h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, '이어서 묻기')),
   ];
 }
 
@@ -159,46 +158,25 @@ function renderDetail() {
   $('#s-detail-body').replaceChildren(...(opened.kind === 'record' ? recordDetail(item) : chatDetail(item)));
 }
 
-function openDetail(target) {
-  listScrollY = window.scrollY;
-  opened = target;
-  renderDetail();
-  $('#s-lists').hidden = true;
-  $('#s-detail').hidden = false;
-  history.pushState({ recordsDetail: true, depth: 1 }, '');
-  window.scrollTo(0, 0);
-}
-
 function closeDetail() {
   opened = null;
   $('#s-detail').hidden = true;
   $('#s-detail-body').replaceChildren();
   $('#s-lists').hidden = false;
-  window.scrollTo(0, listScrollY);
 }
 
-// 상세 화면을 연 뒤 쌓인 방문 기록 (상세 화면 하나 + 질문 목록이 넣은 것) 을 한 번에 지운다.
-// 지우고 나면 popstate 에서 닫힌다. 지울 기록이 없으면 false.
-function popDetailHistory() {
-  if (!history.state?.recordsDetail) return false;
-  hideChatNavPanels();
-  history.go(-(history.state.depth ?? 1));
-  return true;
-}
-
-function backToList() {
-  if (!popDetailHistory()) closeDetail();
-}
-
-// 상세 화면에서 다른 화면으로 넘어갈 때 쓴다. 목록 스크롤 위치로 돌아가지 않는다.
-function leaveDetail(then) {
-  return () => {
-    opened = null;
-    $('#s-detail').hidden = true;
-    $('#s-lists').hidden = false;
-    popDetailHistory();
-    then();
-  };
+// 방문 기록의 상태대로 상세 화면을 열거나 닫는다. target 이 null 이면 목록을 보여 준다.
+// 스크롤 위치는 router.js 가 맞춘다.
+export function showRecordsDetail(target) {
+  if (!target) {
+    closeDetail();
+    return;
+  }
+  opened = target;
+  renderDetail();
+  if (!opened) return; // 지워진 항목이면 renderDetail 이 목록으로 돌려놓았다.
+  $('#s-lists').hidden = true;
+  $('#s-detail').hidden = false;
 }
 
 export function renderRecordsView() {

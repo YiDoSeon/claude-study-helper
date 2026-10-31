@@ -1,4 +1,4 @@
-// 시작점: 화면 전환, 상단 사용액·동기화 표시, 각 화면 초기화.
+// 시작점: 화면 전환 (방문 기록은 router.js), 상단 사용액·동기화 표시, 각 화면 초기화.
 import { $, formatDate } from './dom.js';
 import { importSetupFromHash, hasAnthropicKey } from './settings.js';
 import { usageSummary, startUsageTracking } from './usage.js';
@@ -7,7 +7,8 @@ import { startAutoSync, onStatus } from './sync.js';
 import { initQuizView, startReview, startFromChat } from './views/quiz-view.js';
 import { initAskView, resumeChat, continueFromRecord } from './views/ask-view.js';
 import { initReviewView, renderReviewView } from './views/review-view.js';
-import { initRecordsView, renderRecordsView } from './views/records-view.js';
+import { initRecordsView, renderRecordsView, showRecordsDetail } from './views/records-view.js';
+import { initRouter, navigate } from './router.js';
 import { initSettingsView, renderSettingsView } from './views/settings-view.js';
 
 const RENDERERS = {
@@ -50,43 +51,57 @@ function updateKeyNotice() {
   $('#key-notice').hidden = hasAnthropicKey();
 }
 
+// 방문 기록의 상태대로 화면을 그린다 (router.js 가 부른다).
+function applyState(state) {
+  showView(state.view);
+  if (state.view === 'records') showRecordsDetail(state.detail ?? null);
+}
+
+const goTo = (view) => navigate({ view });
+
+// 기록 상세 화면의 「← 목록으로」. 목록에서 열었으면 그 뒤에 쌓인 기록 (질문 이동) 까지 한 번에 돌아간다.
+function backToRecordsList() {
+  const s = history.state;
+  if (s?.fromList) history.go(-(1 + (s.steps ?? 0)));
+  else goTo('records');
+}
+
 function init() {
   const imported = importSetupFromHash();
-  // 기록 상세 화면과 질문 목록이 넣은 방문 기록으로 뒤로 갈 때의 스크롤 위치는 각자 되돌린다
-  // (records-view.js, chat-nav.js). 브라우저가 따로 되돌려 섞이지 않게 끈다.
-  history.scrollRestoration = 'manual';
 
   const continueInAsk = (record) => {
-    showView('ask');
+    goTo('ask');
     continueFromRecord(record);
   };
   initQuizView({ onContinueInAsk: continueInAsk });
   initReviewView({
     onStart: (item) => {
-      showView('quiz');
+      goTo('quiz');
       startReview(item);
     },
   });
   initAskView({
     onQuiz: (chat) => {
-      showView('quiz');
+      goTo('quiz');
       startFromChat(chat);
     },
   });
   initRecordsView({
     onResume: (chat) => {
-      showView('ask');
+      goTo('ask');
       resumeChat(chat);
     },
     onContinue: continueInAsk,
+    onOpen: (detail) => navigate({ view: 'records', detail, fromList: true }),
+    onBack: backToRecordsList,
   });
   initSettingsView({ onKeyChange: updateKeyNotice, onUsageChange: updateUsageStatus });
 
   for (const tab of document.querySelectorAll('nav [data-view]')) {
-    tab.addEventListener('click', () => showView(tab.dataset.view));
+    tab.addEventListener('click', () => goTo(tab.dataset.view));
   }
-  $('#key-notice-link').addEventListener('click', () => showView('settings'));
-  $('#usage-status').addEventListener('click', () => showView('settings'));
+  $('#key-notice-link').addEventListener('click', () => goTo('settings'));
+  $('#usage-status').addEventListener('click', () => goTo('settings'));
   startUsageTracking();
 
   onStatus((s) => {
@@ -102,7 +117,10 @@ function init() {
 
   updateKeyNotice();
   updateReviewBadge();
-  showView(hasAnthropicKey() ? 'quiz' : 'settings');
+  // 새로 고침이면 보던 화면과 스크롤 위치로 돌아간다.
+  const start = initRouter({ onApply: applyState, initial: { view: hasAnthropicKey() ? 'quiz' : 'settings' } });
+  applyState(start);
+  window.scrollTo(0, start.scrollY ?? 0);
   if (imported) $('#import-notice').hidden = false;
   startAutoSync();
   updateUsageStatus();
