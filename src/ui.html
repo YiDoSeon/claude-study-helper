@@ -11,7 +11,10 @@
 <body>
 <header class="top">
   <h1>공부 도우미</h1>
-  <span id="sync-status" class="sync"></span>
+  <span class="top-status">
+    <button type="button" id="usage-status" class="usage" hidden></button>
+    <span id="sync-status" class="sync"></span>
+  </span>
 </header>
 
 <main>
@@ -112,22 +115,28 @@
   </section>
 
   <section id="view-records" class="view" hidden>
-    <div class="card">
-      <h3>분야별</h3>
-      <p id="s-empty" class="muted">아직 푼 문제가 없어요.</p>
-      <table id="s-table">
-        <thead><tr><th>분야</th><th class="num">푼 문제</th><th class="num">정답률</th><th class="num">부분 정답</th></tr></thead>
-        <tbody></tbody>
-      </table>
+    <div id="s-lists">
+      <div class="card">
+        <h3>분야별</h3>
+        <p id="s-empty" class="muted">아직 푼 문제가 없어요.</p>
+        <table id="s-table">
+          <thead><tr><th>분야</th><th class="num">푼 문제</th><th class="num">정답률</th><th class="num">부분 정답</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>최근에 푼 문제</h3>
+        <ul id="s-recent" class="list"></ul>
+      </div>
+      <div id="s-chats-card" class="card" hidden>
+        <h3>묻기 대화</h3>
+        <ul id="s-chats" class="list"></ul>
+      </div>
     </div>
-    <div class="card">
-      <h3>최근에 푼 문제</h3>
-      <ul id="s-recent" class="list"></ul>
-    </div>
-    <div id="s-chats-card" class="card" hidden>
-      <h3>묻기 대화</h3>
-      <ul id="s-chats" class="list"></ul>
-    </div>
+    <article id="s-detail" class="card" hidden>
+      <button type="button" id="s-back" class="link">← 목록으로</button>
+      <div id="s-detail-body"></div>
+    </article>
   </section>
 
   <section id="view-settings" class="view" hidden>
@@ -137,6 +146,13 @@
       <label>모델 <select id="set-model"></select></label>
       <p class="muted small">이 기기에서 쓴 금액 (추정): <span id="set-cost"></span>
         <button type="button" id="set-cost-reset" class="link">초기화</button></p>
+    </div>
+
+    <div class="card">
+      <h3>이번 주기 사용액</h3>
+      <label>매달 새로 세는 날 <input type="number" id="set-cycle-day" min="1" max="31" step="1" inputmode="numeric"></label>
+      <ul id="set-usage-lines" class="usage-lines"></ul>
+      <p class="muted small">이 앱에서 쓴 금액을 모델별 단가로 계산한 추정치예요. 다른 앱에서 쓴 금액은 들어가지 않아요. GitHub 동기화를 켠 기기끼리 합쳐요.</p>
     </div>
 
     <div class="card">

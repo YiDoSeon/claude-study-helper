@@ -1,7 +1,8 @@
 // 「묻기」 화면: 질문으로 시작하는 튜터 대화. 푼 문제에서 넘어온 대화도 여기서 이어 간다.
 import { $, h, fillSelect, remember } from '../dom.js';
-import { appendBubble, appendSources, streamInto, showBubbleError } from '../chat-ui.js';
+import { appendBubble, appendSources, appendMeta, streamInto, showBubbleError } from '../chat-ui.js';
 import { renderMarkdown } from '../markdown.js';
+import { attachChatNav } from '../chat-nav.js';
 import { TOPICS } from '../topics.js';
 import { askFree, chatToContext, tutorContext } from '../quiz.js';
 import { describeError } from '../api.js';
@@ -23,7 +24,7 @@ function textMessages(history, context) {
   ]);
 }
 
-// { id, at, title, category, history: [{ q, a, at, sources? }], messages: API 에 보낼 대화,
+// { id, at, title, category, history: [{ q, a, at, meta, sources? }], messages: API 에 보낼 대화,
 //   푼 문제에서 넘어왔으면 recordId, topic, context: 문제·내 답·채점 결과 글 }
 let chat = null;
 let onQuizCallback = () => {};
@@ -75,7 +76,8 @@ async function send(event) {
     chat.messages.push({ role: 'assistant', content: message.content });
     const sources = collectSources(message.content);
     appendSources(body, sources);
-    chat.history.push({ q: text, a: answer, at: Date.now(), ...(sources.length && { sources }) });
+    appendMeta(body, message.meta);
+    chat.history.push({ q: text, a: answer, at: Date.now(), meta: message.meta, ...(sources.length && { sources }) });
     const { messages, ...saved } = chat;
     put('chats', saved);
   } catch (err) {
@@ -114,14 +116,16 @@ export function resumeChat(saved) {
   if (saved.context) $('#a-log').append(contextBlock(saved));
   for (const t of saved.history) {
     appendBubble($('#a-log'), 'user', t.q);
-    appendSources(appendBubble($('#a-log'), 'assistant', t.a), t.sources);
+    const body = appendBubble($('#a-log'), 'assistant', t.a);
+    appendSources(body, t.sources);
+    appendMeta(body, t.meta);
   }
   renderChrome();
 }
 
 // 푼 문제의 「더 물어보기」 대화를 「묻기」 대화로 옮겨 이어 간다. 이미 옮긴 문제면 그 대화를 연다.
 export function continueFromRecord(record) {
-  const tutor = (record.tutor ?? []).map(({ q, a, at }) => ({ q, a, at }));
+  const tutor = (record.tutor ?? []).map(({ q, a, at, meta }) => ({ q, a, at, meta }));
   const existing = list('chats').find((c) => c.recordId === record.id);
   if (existing) {
     // 옮긴 뒤 「더 물어보기」 에서 더 물은 것이 있으면 시간 순으로 끼워 넣는다.
@@ -170,6 +174,7 @@ export function initAskView({ onQuiz }) {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#a-form').requestSubmit();
   });
   $('#a-new').addEventListener('click', newChat);
+  attachChatNav($('#a-log'), { questionSelector: '.bubble.user', bottom: $('#a-form') });
   $('#a-quiz').addEventListener('click', quizFromChat);
   renderChrome();
 }

@@ -8,6 +8,8 @@ const DEFAULTS = {
   githubRepo: '',
   githubPath: 'study-data.json',
   deviceName: '',
+  deviceId: '', // 사용액 기록에서 기기를 구분하는 id. usage.js 가 처음 쓸 때 만든다.
+  usageCycleDay: '11', // 사용액을 새로 세기 시작하는 날 (API 크레딧이 채워지는 날)
 };
 
 function read(name) {
@@ -44,7 +46,7 @@ export function hasGithubSync() {
 }
 
 // 다른 기기로 키를 옮기는 링크. 키는 URL fragment(#)에 담아 서버로 전송되지 않게 한다.
-const SETUP_FIELDS = ['anthropicKey', 'githubToken', 'githubRepo', 'githubPath'];
+const SETUP_FIELDS = ['anthropicKey', 'githubToken', 'githubRepo', 'githubPath', 'usageCycleDay'];
 
 function toBase64Url(text) {
   const bytes = new TextEncoder().encode(text);

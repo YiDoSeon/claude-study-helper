@@ -1,9 +1,10 @@
-// 「설정」 화면: API 키와 모델, GitHub 동기화, 다른 기기로 옮기기, 백업.
+// 「설정」 화면: API 키와 모델, 이번 주기 사용액, GitHub 동기화, 다른 기기로 옮기기, 백업.
 import QRCode from 'qrcode';
-import { $, fillSelect } from '../dom.js';
-import { getSetting, setSetting, buildSetupLink } from '../settings.js';
+import { $, h, fillSelect, formatDate } from '../dom.js';
+import { getSetting, setSetting, buildSetupLink, hasGithubSync } from '../settings.js';
+import { usageSummary } from '../usage.js';
 import { MODELS, getCostTotal, resetCostTotal } from '../api.js';
-import { getData, replaceWithMerged } from '../store.js';
+import { getData, replaceWithMerged, onChange } from '../store.js';
 import { syncNow, onStatus } from '../sync.js';
 
 const FIELDS = [
@@ -12,6 +13,7 @@ const FIELDS = [
   ['#set-token', 'githubToken'],
   ['#set-path', 'githubPath'],
   ['#set-device', 'deviceName'],
+  ['#set-cycle-day', 'usageCycleDay'],
 ];
 const SYNC_FIELDS = new Set(['githubRepo', 'githubToken', 'githubPath']);
 
@@ -19,6 +21,19 @@ export function renderSettingsView() {
   for (const [sel, name] of FIELDS) $(sel).value = getSetting(name);
   $('#set-model').value = getSetting('model');
   $('#set-cost').textContent = `$${getCostTotal().toFixed(3)}`;
+  renderUsageLines();
+}
+
+const usd = (v) => `$${v.toFixed(2)}`;
+
+function renderUsageLines() {
+  const s = usageSummary();
+  const lines = [
+    `${formatDate(s.start.getTime()).split(' ')[0]} 부터 합계: ${usd(s.total)}`,
+    ...s.devices.map((d) => `${d.label}${d.mine ? ' (이 기기)' : ''}: ${usd(d.usd)}`),
+  ];
+  if (!hasGithubSync()) lines.push('GitHub 동기화가 꺼져 있어서 이 기기에서 쓴 금액만 보여요.');
+  $('#set-usage-lines').replaceChildren(...lines.map((t) => h('li', {}, t)));
 }
 
 function showQr() {
@@ -56,7 +71,7 @@ async function importData(file) {
   }
 }
 
-export function initSettingsView({ onKeyChange }) {
+export function initSettingsView({ onKeyChange, onUsageChange }) {
   fillSelect(
     $('#set-model'),
     Object.entries(MODELS).map(([id, m]) => ({ value: id, label: `${m.label} (입력 $${m.input} / 출력 $${m.output} per 1M)` })),
@@ -66,9 +81,15 @@ export function initSettingsView({ onKeyChange }) {
     $(sel).addEventListener('change', () => {
       setSetting(name, $(sel).value.trim());
       if (SYNC_FIELDS.has(name)) syncNow();
+      if (name === 'usageCycleDay') {
+        renderUsageLines();
+        onUsageChange();
+      }
       if (name === 'anthropicKey') onKeyChange();
     });
   }
+  // 이 기기나 다른 기기의 사용액이 기록에 들어오면 다시 그린다.
+  onChange(renderUsageLines);
   $('#set-model').addEventListener('change', () => setSetting('model', $('#set-model').value));
   $('#set-cost-reset').addEventListener('click', () => {
     resetCostTotal();

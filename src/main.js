@@ -1,6 +1,7 @@
-// 시작점: 화면 전환, 상단 동기화 표시, 각 화면 초기화.
-import { $ } from './dom.js';
+// 시작점: 화면 전환, 상단 사용액·동기화 표시, 각 화면 초기화.
+import { $, formatDate } from './dom.js';
 import { importSetupFromHash, hasAnthropicKey } from './settings.js';
+import { usageSummary, startUsageTracking } from './usage.js';
 import { onChange } from './store.js';
 import { startAutoSync, onStatus } from './sync.js';
 import { initQuizView, startReview, startFromChat } from './views/quiz-view.js';
@@ -36,6 +37,15 @@ function updateReviewBadge() {
   badge.hidden = count === 0;
 }
 
+// 상단의 사용액 표시. 이번 주기에 이 앱에서 쓴 추정액을 동기화된 기기끼리 합친 값이다.
+function updateUsageStatus() {
+  const s = usageSummary();
+  const el = $('#usage-status');
+  el.textContent = `사용 $${s.total.toFixed(2)}`;
+  el.title = `${formatDate(s.start.getTime()).split(' ')[0]} 부터 이 앱에서 쓴 추정액`;
+  el.hidden = s.total === 0;
+}
+
 function updateKeyNotice() {
   $('#key-notice').hidden = hasAnthropicKey();
 }
@@ -67,12 +77,14 @@ function init() {
     },
     onContinue: continueInAsk,
   });
-  initSettingsView({ onKeyChange: updateKeyNotice });
+  initSettingsView({ onKeyChange: updateKeyNotice, onUsageChange: updateUsageStatus });
 
   for (const tab of document.querySelectorAll('nav [data-view]')) {
     tab.addEventListener('click', () => showView(tab.dataset.view));
   }
   $('#key-notice-link').addEventListener('click', () => showView('settings'));
+  $('#usage-status').addEventListener('click', () => showView('settings'));
+  startUsageTracking();
 
   onStatus((s) => {
     const el = $('#sync-status');
@@ -81,6 +93,7 @@ function init() {
   });
   onChange(() => {
     updateReviewBadge();
+    updateUsageStatus();
     if (activeView === 'review' || activeView === 'records') RENDERERS[activeView]();
   });
 
@@ -89,6 +102,7 @@ function init() {
   showView(hasAnthropicKey() ? 'quiz' : 'settings');
   if (imported) $('#import-notice').hidden = false;
   startAutoSync();
+  updateUsageStatus();
 }
 
 init();

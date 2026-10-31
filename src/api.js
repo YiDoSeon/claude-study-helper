@@ -58,7 +58,15 @@ function trackCost(message) {
   } catch {
     // 누적값 저장 실패는 무시한다.
   }
+  for (const fn of costListeners) fn(cost);
   return cost;
+}
+
+const costListeners = new Set();
+
+// 요청 하나의 추정 금액 (USD) 을 계산할 때마다 fn(cost) 을 부른다.
+export function onCost(fn) {
+  costListeners.add(fn);
 }
 
 export function getCostTotal() {
@@ -119,10 +127,12 @@ export async function callJson({ system, user, schema, effort = 'medium', maxTok
 // 돌려받은 content 를 그대로 다음 요청에 붙여야 thinking 블록이 유지된다.
 // webSearch 가 true 면 서버 웹 검색 도구를 넣는다. 검색이 길어 pause_turn 으로 멈추면
 // 받은 content 를 assistant 차례로 붙여 다시 보내고, 이어 받은 content 를 하나로 합쳐 돌려준다.
+// 돌려주는 message 의 meta 는 addUsage 가 모은 사용량이다.
 export async function streamChat({ system, messages, effort = 'medium', webSearch = false, onText }) {
   const model = currentModel();
   const tools = webSearch ? [{ type: MODELS[model].webSearch, name: 'web_search', max_uses: WEB_SEARCH_MAX_USES }] : undefined;
   const content = [];
+  const meta = { model, effort, input: 0, cacheRead: 0, cacheWrite: 0, output: 0, searches: 0, cost: 0 };
   let wroteText = false;
   let toolSinceText = false;
   for (let turn = 0; ; turn++) {
@@ -149,9 +159,22 @@ export async function streamChat({ system, messages, effort = 'medium', webSearc
       onText(delta);
     });
     const message = await stream.finalMessage();
-    trackCost(message);
+    addUsage(meta, message, trackCost(message));
     if (message.stop_reason === 'refusal') throw new RefusalError();
     content.push(...message.content);
-    if (message.stop_reason !== 'pause_turn' || turn >= MAX_CONTINUATIONS) return { ...message, content };
+    if (message.stop_reason !== 'pause_turn' || turn >= MAX_CONTINUATIONS) return { ...message, content, meta };
   }
+}
+
+// 답 하나에 쓴 모델, effort, 토큰, 추정 금액. pause_turn 으로 이어 받은 요청까지 더한다.
+// model 은 실제로 답한 모델이라, 서버가 다른 모델로 다시 시도했으면 요청한 모델과 다르다.
+function addUsage(meta, message, cost) {
+  const u = message.usage;
+  meta.model = message.model;
+  meta.input += u.input_tokens ?? 0;
+  meta.cacheRead += u.cache_read_input_tokens ?? 0;
+  meta.cacheWrite += u.cache_creation_input_tokens ?? 0;
+  meta.output += u.output_tokens ?? 0;
+  meta.searches += u.server_tool_use?.web_search_requests ?? 0;
+  meta.cost += cost;
 }

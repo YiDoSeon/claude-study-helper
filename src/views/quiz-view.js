@@ -1,7 +1,8 @@
 // 「풀기」 화면: 분야 고르기, 문제 풀기, 채점 결과, 튜터 대화.
 import { $, h, fillSelect, remember } from '../dom.js';
 import { renderMarkdown, renderCode } from '../markdown.js';
-import { appendBubble, streamInto, showBubbleError } from '../chat-ui.js';
+import { appendBubble, appendMeta, streamInto, showBubbleError } from '../chat-ui.js';
+import { attachChatNav } from '../chat-nav.js';
 import { TOPICS, DIFFICULTIES, QUESTION_TYPES, CUSTOM_CATEGORY_ID, CUSTOM_CATEGORY_LABEL } from '../topics.js';
 import { generateQuestion, gradeChoice, gradeAnswer, tutorContext, askTutor } from '../quiz.js';
 import { describeError } from '../api.js';
@@ -281,10 +282,11 @@ async function sendTutor(event) {
     );
     // thinking 블록까지 포함한 content 전체를 그대로 이어 붙인다.
     tutor.messages.push({ role: 'assistant', content: message.content });
-    // 기록에는 화면에 보인 질문과 답 글만 남긴다.
+    appendMeta(body, message.meta);
+    // 기록에는 화면에 보인 질문과 답 글, 사용량만 남긴다.
     current.record = put('records', {
       ...current.record,
-      tutor: [...(current.record.tutor ?? []), { q: text, a: answer, at: Date.now() }],
+      tutor: [...(current.record.tutor ?? []), { q: text, a: answer, at: Date.now(), meta: message.meta }],
     });
   } catch (err) {
     tutor.messages.pop();
@@ -347,4 +349,5 @@ export function initQuizView({ onContinueInAsk }) {
   $('#tutor-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#tutor-form').requestSubmit();
   });
+  attachChatNav($('#tutor-log'), { questionSelector: '.bubble.user', bottom: $('#tutor-form') });
 }
