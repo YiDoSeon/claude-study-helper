@@ -1,10 +1,10 @@
 // 학습 기록. 브라우저에 저장하고, sync.js 가 GitHub 저장소와 합친다.
 // 모든 항목은 id 로 구분하고 updatedAt 이 더 큰 쪽이 이긴다.
 const KEY = 'study.data.v1';
-const COLLECTIONS = ['records', 'reviews', 'topics', 'chats', 'usage'];
+const COLLECTIONS = ['records', 'reviews', 'topics', 'chats', 'usage', 'stars', 'notes'];
 
 function emptyData() {
-  return { version: 1, records: {}, reviews: {}, topics: {}, chats: {}, usage: {} };
+  return { version: 1, records: {}, reviews: {}, topics: {}, chats: {}, usage: {}, stars: {}, notes: {} };
 }
 
 function normalize(raw) {

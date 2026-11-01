@@ -6,6 +6,8 @@ import { attachChatNav } from '../chat-nav.js';
 import { decoratePre } from '../code-block.js';
 import { list } from '../store.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
+import { isStarred, starButton } from '../favorites.js';
+import { getNote, noteEditor, mountKeepingEditor } from '../notes.js';
 
 const VERDICT_LABEL = { correct: '정답', partial: '부분', wrong: '오답' };
 const RECENT_LIMIT = 50;
@@ -59,6 +61,15 @@ function qaBlock(t) {
 
 // ── 목록 ──────────────────────────────────────────────
 
+// 행 안에는 버튼을 넣을 수 없으므로 표시만 한다.
+function starMark(kind, id) {
+  return isStarred(kind, id) ? h('span', { class: 'row-star', title: '즐겨찾기' }, '★ ') : '';
+}
+
+function noteMark(kind, id) {
+  return getNote(kind, id) ? h('span', { class: 'row-note' }, '메모') : '';
+}
+
 function recordRow(r) {
   return h(
     'li',
@@ -66,10 +77,12 @@ function recordRow(r) {
     h(
       'button',
       { type: 'button', class: 'record-row', 'data-key': `record:${r.id}`, onclick: () => onOpenDetail({ kind: 'record', id: r.id }) },
+      starMark('record', r.id),
       h('span', { class: `pill ${r.verdict}` }, VERDICT_LABEL[r.verdict]),
       ' ',
       h('strong', {}, r.question.concept),
       h('span', { class: 'muted small' }, ` · ${r.topic.path.join(' › ')} · ${formatDate(r.at)}`),
+      noteMark('record', r.id),
     ),
   );
 }
@@ -81,8 +94,10 @@ function chatRow(c) {
     h(
       'button',
       { type: 'button', class: 'record-row', 'data-key': `chat:${c.id}`, onclick: () => onOpenDetail({ kind: 'chat', id: c.id }) },
+      starMark('chat', c.id),
       h('strong', {}, c.title),
       h('span', { class: 'muted small' }, ` · ${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
+      noteMark('chat', c.id),
     ),
   );
 }
@@ -116,7 +131,7 @@ function renderLists() {
 function recordDetail(r) {
   const q = r.question;
   return [
-    h('h2', { class: 'detail-title' }, h('span', { class: `pill ${r.verdict}` }, VERDICT_LABEL[r.verdict]), ' ', q.concept),
+    h('h2', { class: 'detail-title' }, h('span', { class: `pill ${r.verdict}` }, VERDICT_LABEL[r.verdict]), ' ', q.concept, ' ', starButton('record', r.id)),
     h('p', { class: 'muted small' }, `${r.topic.path.join(' › ')} · ${formatDate(r.at)}`),
     h('h4', {}, '문제'),
     mdBlock(q.prompt),
@@ -131,6 +146,7 @@ function recordDetail(r) {
     mdBlock(q.explanation),
     r.tutor?.length ? h('h4', {}, `더 물어본 내용 (${r.tutor.length}개)`) : '',
     ...(r.tutor ?? []).map(qaBlock),
+    noteEditor('record', r.id),
     h(
       'div',
       { class: 'actions' },
@@ -142,9 +158,10 @@ function recordDetail(r) {
 
 function chatDetail(c) {
   return [
-    h('h2', { class: 'detail-title' }, c.title),
+    h('h2', { class: 'detail-title' }, c.title, ' ', starButton('chat', c.id)),
     h('p', { class: 'muted small' }, `${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
     ...c.history.map(qaBlock),
+    noteEditor('chat', c.id),
     h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, '이어서 묻기')),
   ];
 }
@@ -156,7 +173,12 @@ function renderDetail() {
     closeDetail();
     return;
   }
-  $('#s-detail-body').replaceChildren(...(opened.kind === 'record' ? recordDetail(item) : chatDetail(item)));
+  const body = $('#s-detail-body');
+  const nodes = opened.kind === 'record' ? recordDetail(item) : chatDetail(item);
+  // 이미 열려 있는 상세를 다시 그릴 때는 메모 편집기를 떼지 않고, 스크롤 위치를 되돌린다.
+  const y = $('#s-detail').hidden ? null : window.scrollY;
+  mountKeepingEditor(body, nodes, noteEditor(opened.kind, opened.id));
+  if (y !== null && window.scrollY !== y) window.scrollTo(0, y);
 }
 
 function closeDetail() {
