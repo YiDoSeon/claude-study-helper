@@ -193,17 +193,17 @@ pre {
   border-top: 1px solid var(--border);
   border-radius: 0 0 var(--radius) var(--radius);
 }
-/* 입력 영역 접기 손잡이 (dock-toggle.js). 위쪽 경계선 가운데에 걸쳐 dock 높이를 늘리지 않는다. 오른쪽의 질문 목록 버튼과는 가운데라 겹치지 않는다. */
+/* 입력 영역 접기 손잡이 (dock-toggle.js). 위쪽 경계선 오른쪽 끝에 걸쳐 dock 높이를 늘리지 않는다. 위로 16px 나오므로 질문 목록 버튼은 그만큼 더 띄운다 (.chat-nav.above-dock). */
 .dock-toggle {
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  min-height: 24px;
-  padding: 0 12px;
+  right: 16px;
+  transform: translateY(-50%);
+  min-height: 32px;
+  padding: 0 14px;
   border-radius: 999px;
   background: var(--surface);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   line-height: 1;
 }
 /* 접힌 상태: 손잡이만 남기고 얇은 띠로 줄인다. chat-nav.js 의 ResizeObserver 가 줄어든 높이를 다시 잰다. */
@@ -245,6 +245,8 @@ label.check input { width: auto; margin: 0; }
 }
 /* 입력 영역이 있는 화면에서는 입력 영역 (--dock-h, chat-nav.js 가 잰 높이) 위에 둔다. */
 .chat-nav.above-dock { bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + 12px); }
+/* 접기 손잡이가 있는 입력 영역에서는 손잡이 (위로 16px) 위에 둔다. */
+.chat-nav.above-dock.above-toggle { bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + 24px); }
 .chat-nav-toggle, .detail-tool {
   min-height: 40px;
   border-radius: 999px;

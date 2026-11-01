@@ -58,6 +58,8 @@ export function attachChatNav(container, { questionSelector, bottom = container,
   );
   const toggle = h('button', { type: 'button', class: 'chat-nav-toggle', hidden: true, onclick: togglePanel }, '질문 목록');
   const nav = h('div', { class: dock ? 'chat-nav above-dock' : 'chat-nav' }, panel, toggle);
+  // 접기 손잡이 (dock-toggle.js) 가 dock 위로 나와 있으면 그 위에 둔다. attachDockToggle 이 먼저 불린다.
+  if (dock?.querySelector('.dock-toggle')) nav.classList.add('above-toggle');
   container.after(nav);
   if (dock) {
     const syncDockHeight = () => nav.style.setProperty('--dock-h', `${dock.offsetHeight}px`);
