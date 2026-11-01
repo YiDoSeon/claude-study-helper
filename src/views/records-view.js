@@ -33,7 +33,7 @@ export function initRecordsView({ onResume, onContinue, onOpen, onBack }) {
   onContinueRecord = onContinue;
   onOpenDetail = onOpen;
   $('#s-back').addEventListener('click', onBack);
-  detailTools = initDetailTools(attachChatNav($('#s-detail-body'), { questionSelector: '.qa-q' }));
+  detailTools = initDetailTools(attachChatNav($('#s-detail-body'), { questionSelector: '.qa-q', dock: $('#s-detail-dock') }));
   // 필터 줄은 여기서 한 번만 만든다. 다시 그리면 검색칸의 포커스와 글자가 사라진다.
   filterBar = createFilterBar($('#s-filter'), {
     key: 'records.filter',
@@ -257,13 +257,21 @@ function recordDetail(r) {
     mdBlock(q.explanation),
     r.tutor?.length ? h('h4', {}, `더 물어본 내용 (${r.tutor.length}개)`) : '',
     ...(r.tutor ?? []).map(qaBlock),
-    h(
-      'div',
-      { class: 'actions' },
-      h('button', { type: 'button', onclick: () => onContinueRecord(r) }, '이 문제로 묻기'),
-      reviewAction(r),
-    ),
   ];
+}
+
+// 상세 아래에 고정된 버튼 줄 (#s-detail-dock).
+function recordActions(r) {
+  return h(
+    'div',
+    { class: 'actions' },
+    h('button', { type: 'button', onclick: () => onContinueRecord(r) }, '이 문제로 묻기'),
+    reviewAction(r),
+  );
+}
+
+function chatActions(c) {
+  return h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, '이어서 묻기'));
 }
 
 function chatDetail(c) {
@@ -271,7 +279,6 @@ function chatDetail(c) {
     h('h2', { class: 'detail-title' }, c.title),
     h('p', { class: 'muted small' }, `${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
     ...c.history.map(qaBlock),
-    h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, '이어서 묻기')),
   ];
 }
 
@@ -287,6 +294,7 @@ function renderDetail() {
   // 이미 열려 있는 상세를 다시 그릴 때는 스크롤 위치를 되돌린다.
   const y = $('#s-detail').hidden ? null : window.scrollY;
   body.replaceChildren(...nodes);
+  $('#s-detail-dock').replaceChildren(opened.kind === 'record' ? recordActions(item) : chatActions(item));
   detailTools.setTarget(opened);
   if (y !== null && window.scrollY !== y) window.scrollTo(0, y);
 }
@@ -296,6 +304,7 @@ function closeDetail() {
   detailTools.setTarget(null);
   $('#s-detail').hidden = true;
   $('#s-detail-body').replaceChildren();
+  $('#s-detail-dock').replaceChildren();
   $('#s-lists').hidden = false;
 }
 
