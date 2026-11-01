@@ -193,6 +193,9 @@ pre {
   border-top: 1px solid var(--border);
   border-radius: 0 0 var(--radius) var(--radius);
 }
+/* 요청에 쓸 모델 한 줄 (model-hint.js). 입력 영역에서는 한 줄을 넘지 않게 자른다. */
+.model-hint { margin: 6px 0 0; }
+.chat-dock .model-hint { margin: 0 0 4px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 웹 검색 줄과 보내기 단추를 한 줄에, 단추 줄도 한 줄에 둔다. */
 .chat-dock .chat-form { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; }
 .chat-dock .chat-form textarea { grid-column: 1 / -1; margin-top: 0; }

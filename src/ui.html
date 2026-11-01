@@ -22,6 +22,7 @@
     Claude API 키가 없어요. <button type="button" id="key-notice-link" class="link">설정에서 넣기</button>
   </p>
   <p id="import-notice" class="notice ok" hidden>다른 기기의 설정을 가져왔어요.</p>
+  <p id="local-notice" class="notice" hidden>로컬 파일로 열려 있어요. 설정, API 키, 기록이 Pages 주소와 따로 저장돼요.</p>
 
   <section id="view-quiz" class="view">
     <form id="quiz-setup" class="card">
@@ -33,6 +34,7 @@
         <label>형식 <select id="q-type"></select></label>
       </div>
       <button type="submit" id="q-get" class="primary">문제 받기</button>
+      <p class="muted small model-hint"></p>
     </form>
 
     <p id="q-status" class="status" hidden></p>
@@ -73,6 +75,7 @@
       <h3>이 문제에 대해 묻기</h3>
       <div id="tutor-log" class="chat-log"></div>
       <div class="chat-dock">
+        <p class="muted small model-hint"></p>
         <form id="tutor-form" class="chat-form">
           <textarea id="tutor-input" rows="2" placeholder="궁금한 점을 적어 주세요 (Ctrl+Enter 로 보내기)"></textarea>
           <button type="submit" class="primary">보내기</button>
@@ -94,6 +97,7 @@
       <p id="a-empty" class="muted small">궁금한 것을 바로 물어보세요. 대화가 끝나면 그 내용으로 문제를 풀어 볼 수 있어요.</p>
       <div id="a-log" class="chat-log"></div>
       <div class="chat-dock">
+        <p class="muted small model-hint"></p>
         <form id="a-form" class="chat-form">
           <textarea id="a-input" rows="2" placeholder="예: TCP 3-way handshake 가 왜 3번이어야 해? (Ctrl+Enter 로 보내기)"></textarea>
           <label class="check"><input type="checkbox" id="a-web"> 웹 검색 <span class="muted small dock-note">(검색 1회 약 $0.01, 결과 글은 입력 토큰으로 계산)</span></label>

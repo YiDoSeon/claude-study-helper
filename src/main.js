@@ -10,6 +10,8 @@ import { initReviewView, renderReviewView } from './views/review-view.js';
 import { initRecordsView, renderRecordsView, showRecordsDetail } from './views/records-view.js';
 import { initRouter, navigate } from './router.js';
 import { initSettingsView, renderSettingsView } from './views/settings-view.js';
+import { updateModelHint } from './model-hint.js';
+import { updateLocalNotice } from './local-notice.js';
 
 const RENDERERS = {
   quiz: () => {},
@@ -27,6 +29,7 @@ function showView(name) {
   for (const tab of document.querySelectorAll('nav [data-view]')) {
     tab.classList.toggle('active', tab.dataset.view === name);
   }
+  updateModelHint();
   RENDERERS[name]();
   window.scrollTo(0, 0);
 }
@@ -123,6 +126,7 @@ function init() {
   });
 
   updateKeyNotice();
+  updateLocalNotice();
   updateReviewBadge();
   // 새로 고침이면 보던 화면과 스크롤 위치로 돌아간다.
   const start = initRouter({ onApply: applyState, initial: { view: hasAnthropicKey() ? 'quiz' : 'settings' } });

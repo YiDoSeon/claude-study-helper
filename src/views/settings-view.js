@@ -6,6 +6,7 @@ import { usageSummary } from '../usage.js';
 import { MODELS, getCostTotal, resetCostTotal } from '../api.js';
 import { getData, replaceWithMerged, onChange } from '../store.js';
 import { syncNow, onStatus } from '../sync.js';
+import { updateModelHint } from '../model-hint.js';
 
 const FIELDS = [
   ['#set-key', 'anthropicKey'],
@@ -90,7 +91,10 @@ export function initSettingsView({ onKeyChange, onUsageChange }) {
   }
   // 이 기기나 다른 기기의 사용액이 기록에 들어오면 다시 그린다.
   onChange(renderUsageLines);
-  $('#set-model').addEventListener('change', () => setSetting('model', $('#set-model').value));
+  $('#set-model').addEventListener('change', () => {
+    setSetting('model', $('#set-model').value);
+    updateModelHint();
+  });
   $('#set-cost-reset').addEventListener('click', () => {
     resetCostTotal();
     renderSettingsView();

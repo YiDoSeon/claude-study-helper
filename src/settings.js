@@ -37,6 +37,11 @@ export function setSetting(name, value) {
   write(name, value);
 }
 
+// 이 기기에 값을 저장한 적이 있는지 (없으면 getSetting 은 DEFAULTS 를 돌려준다).
+export function hasSetting(name) {
+  return read(name) != null;
+}
+
 export function hasAnthropicKey() {
   return getSetting('anthropicKey') !== '';
 }

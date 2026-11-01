@@ -32,7 +32,7 @@ function client() {
   return cachedClient;
 }
 
-function currentModel() {
+export function currentModel() {
   const id = getSetting('model');
   return MODELS[id] ? id : 'claude-opus-5-5';
 }
