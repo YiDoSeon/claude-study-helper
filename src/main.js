@@ -2,7 +2,8 @@
 import { $, formatDate } from './dom.js';
 import { importSetupFromHash, hasAnthropicKey } from './settings.js';
 import { usageSummary, startUsageTracking } from './usage.js';
-import { onChange } from './store.js';
+import { onChange, initStore } from './store.js';
+import { initSaveNotice } from './save-notice.js';
 import { startAutoSync, onStatus } from './sync.js';
 import { initQuizView, startReview, startFromChat } from './views/quiz-view.js';
 import { initAskView, resumeChat, continueFromRecord, closeChatIfOpen } from './views/ask-view.js';
@@ -69,7 +70,10 @@ function backToRecordsList() {
   else goTo('records');
 }
 
-function init() {
+async function init() {
+  initSaveNotice();
+  // 기록을 읽는 일은 모두 저장된 기록을 불러온 뒤에 한다.
+  await initStore();
   const imported = importSetupFromHash();
 
   // 이어서 쓰는 화면이므로 대화를 그린 뒤 문서 맨 아래로 간다. 이 위치가 이 방문 기록에 저장된다 (router.js).

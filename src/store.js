@@ -1,6 +1,7 @@
-// 학습 기록. 브라우저에 저장하고, sync.js 가 GitHub 저장소와 합친다.
+// 학습 기록. data-storage.js 로 기기에 저장하고, sync.js 가 GitHub 저장소와 합친다.
 // 모든 항목은 id 로 구분하고 updatedAt 이 더 큰 쪽이 이긴다. 단 삭제 표시 (deleted: true) 는 updatedAt 과 상관없이 이긴다.
-const KEY = 'study.data.v1';
+import { loadStoredData, saveStoredData } from './data-storage.js';
+
 const COLLECTIONS = ['records', 'reviews', 'topics', 'chats', 'usage', 'stars', 'notes', 'archive'];
 
 function emptyData() {
@@ -17,23 +18,21 @@ function normalize(raw) {
   return data;
 }
 
-let data = load();
+let data = emptyData();
 const listeners = new Set();
 
-function load() {
+// 기기에 저장된 기록을 읽어 온다. 부르기 전에도 store 는 메모리에서 동작한다.
+export async function initStore() {
   try {
-    return normalize(JSON.parse(localStorage.getItem(KEY)));
+    data = normalize(await loadStoredData());
   } catch {
-    return emptyData();
+    data = emptyData();
   }
 }
 
 function persist(source) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(data));
-  } catch {
-    // 저장 실패 시에도 메모리의 data 는 유지된다.
-  }
+  // 저장 실패는 data-storage.js 가 알린다. 메모리의 data 는 유지된다.
+  saveStoredData(data);
   for (const fn of listeners) fn(source);
 }
 
