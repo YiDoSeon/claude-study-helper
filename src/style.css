@@ -224,7 +224,7 @@ label.check input { width: auto; margin: 0; }
 }
 /* 입력 영역이 있는 화면에서는 입력 영역 (--dock-h, chat-nav.js 가 잰 높이) 위에 둔다. */
 .chat-nav.above-dock { bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + 12px); }
-.chat-nav-toggle {
+.chat-nav-toggle, .detail-tool {
   min-height: 40px;
   border-radius: 999px;
   background: var(--surface);
@@ -241,6 +241,10 @@ label.check input { width: auto; margin: 0; }
   border-radius: var(--radius);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
 }
+.detail-star { font-size: 1.2rem; color: var(--muted); }
+.detail-star[aria-pressed="true"] { color: var(--warn); }
+.detail-memo.has-note { color: var(--warn); }
+.detail-memo-panel .note-input { margin-bottom: 6px; }
 .chat-nav-panel p { margin: 0 0 6px; }
 .chat-nav-list { margin: 0; padding-left: 22px; }
 .chat-nav-item {
@@ -297,17 +301,6 @@ label.check input { width: auto; margin: 0; }
 #s-table tbody tr[data-cat] { cursor: pointer; }
 #s-table tbody tr.selected { background: var(--warn-bg); font-weight: 600; }
 button.more { display: block; width: 100%; margin-top: 8px; }
-.star-btn {
-  min-height: 0;
-  padding: 0 6px;
-  border: 0;
-  background: none;
-  font-size: 1.2rem;
-  line-height: 1;
-  color: var(--muted);
-  vertical-align: middle;
-}
-.star-btn[aria-pressed="true"] { color: var(--warn); }
 .note-input {
   display: block;
   width: 100%;

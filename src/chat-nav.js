@@ -1,5 +1,5 @@
 // 긴 대화에서 질문 사이를 옮겨 다니는 떠 있는 버튼과 질문 목록.
-// 「묻기」, 「더 물어보기」, 기록의 상세 화면이 같이 쓴다.
+// 「묻기」, 「더 물어보기」, 기록의 상세 화면이 같이 쓴다. 기록의 상세 화면은 addTool 로 즐겨찾기와 메모 버튼을 같은 줄에 넣는다.
 // 질문으로 옮길 때 방문 기록을 하나 넣어, 뒤로 가기가 옮기기 전 위치로 돌아가게 한다 (router.js).
 import { h } from './dom.js';
 import { pushPosition } from './router.js';
@@ -21,6 +21,7 @@ function scrollToEdge(el, edge) {
 // bottom 은 「맨 아래」 로 갈 요소다 (보통 입력 칸). 없으면 container 의 끝으로 간다.
 // dock 은 화면 아래에 고정된 입력 영역이다. 있으면 버튼을 그 위로 올리고, 「맨 아래」 는 문서 끝으로 간다.
 export function attachChatNav(container, { questionSelector, bottom = container, dock = null }) {
+  const tools = [];
   const list = h('ol', { class: 'chat-nav-list' });
   const panel = h(
     'div',
@@ -71,6 +72,7 @@ export function attachChatNav(container, { questionSelector, bottom = container,
       );
     }
     panel.hidden = !panel.hidden;
+    if (!panel.hidden) for (const tool of tools) tool.close();
   }
 
   function update() {
@@ -80,11 +82,27 @@ export function attachChatNav(container, { questionSelector, bottom = container,
 
   new MutationObserver(update).observe(container, { childList: true, subtree: true });
   document.addEventListener('click', (event) => {
-    if (!nav.contains(event.target)) panel.hidden = true;
+    if (nav.contains(event.target)) return;
+    panel.hidden = true;
+    for (const tool of tools) tool.close();
   });
   // 뒤로 가기·앞으로 가기로 다른 위치나 화면으로 가면 창을 닫는다.
   window.addEventListener('popstate', () => {
     panel.hidden = true;
+    for (const tool of tools) tool.close();
   });
   update();
+
+  // 다른 도구의 버튼들을 「질문 목록」 위에, 창을 질문 목록 창 아래에 넣는다.
+  // 질문 목록 창이 열리면 tool.close() 를 불러 도구의 창을 닫는다. 도구는 closePanel() 로 질문 목록 창을 닫는다.
+  return {
+    addTool({ buttons, panel: toolPanel, close }) {
+      tools.push({ close });
+      panel.after(toolPanel);
+      toggle.before(...buttons);
+    },
+    closePanel() {
+      panel.hidden = true;
+    },
+  };
 }

@@ -6,8 +6,9 @@ import { attachChatNav } from '../chat-nav.js';
 import { decoratePre } from '../code-block.js';
 import { list } from '../store.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
-import { isStarred, starButton } from '../favorites.js';
-import { getNote, noteEditor, mountKeepingEditor } from '../notes.js';
+import { isStarred } from '../favorites.js';
+import { getNote } from '../notes.js';
+import { initDetailTools } from '../detail-tools.js';
 import { splitTerms, recordFields, chatFields, searchFields } from '../list-search.js';
 import { createFilterBar, periodRange, inPeriod, sortItems, isFiltered, compareText } from '../list-filter.js';
 
@@ -22,6 +23,8 @@ let onContinueRecord = () => {};
 let onOpenDetail = () => {};
 // 상세 화면에 연 항목. { kind: 'record' | 'chat', id } 이고, 목록을 보고 있으면 null.
 let opened = null;
+// 상세 화면 옆의 즐겨찾기·메모 도구 (detail-tools.js). initRecordsView 가 만든다.
+let detailTools = null;
 
 // 상세 화면을 여닫는 것은 방문 기록에 남도록 main.js 가 router 로 처리한다.
 // onOpen(target) 은 항목을 눌렀을 때, onBack() 은 「← 목록으로」 를 눌렀을 때 부른다.
@@ -30,7 +33,7 @@ export function initRecordsView({ onResume, onContinue, onOpen, onBack }) {
   onContinueRecord = onContinue;
   onOpenDetail = onOpen;
   $('#s-back').addEventListener('click', onBack);
-  attachChatNav($('#s-detail-body'), { questionSelector: '.qa-q' });
+  detailTools = initDetailTools(attachChatNav($('#s-detail-body'), { questionSelector: '.qa-q' }));
   // 필터 줄은 여기서 한 번만 만든다. 다시 그리면 검색칸의 포커스와 글자가 사라진다.
   filterBar = createFilterBar($('#s-filter'), {
     key: 'records.filter',
@@ -228,7 +231,7 @@ function renderLists() {
 function recordDetail(r) {
   const q = r.question;
   return [
-    h('h2', { class: 'detail-title' }, h('span', { class: `pill ${r.verdict}` }, VERDICT_LABEL[r.verdict]), ' ', q.concept, ' ', starButton('record', r.id)),
+    h('h2', { class: 'detail-title' }, h('span', { class: `pill ${r.verdict}` }, VERDICT_LABEL[r.verdict]), ' ', q.concept),
     h('p', { class: 'muted small' }, `${r.topic.path.join(' › ')} · ${formatDate(r.at)}`),
     h('h4', {}, '문제'),
     mdBlock(q.prompt),
@@ -243,7 +246,6 @@ function recordDetail(r) {
     mdBlock(q.explanation),
     r.tutor?.length ? h('h4', {}, `더 물어본 내용 (${r.tutor.length}개)`) : '',
     ...(r.tutor ?? []).map(qaBlock),
-    noteEditor('record', r.id),
     h(
       'div',
       { class: 'actions' },
@@ -255,10 +257,9 @@ function recordDetail(r) {
 
 function chatDetail(c) {
   return [
-    h('h2', { class: 'detail-title' }, c.title, ' ', starButton('chat', c.id)),
+    h('h2', { class: 'detail-title' }, c.title),
     h('p', { class: 'muted small' }, `${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
     ...c.history.map(qaBlock),
-    noteEditor('chat', c.id),
     h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, '이어서 묻기')),
   ];
 }
@@ -272,14 +273,16 @@ function renderDetail() {
   }
   const body = $('#s-detail-body');
   const nodes = opened.kind === 'record' ? recordDetail(item) : chatDetail(item);
-  // 이미 열려 있는 상세를 다시 그릴 때는 메모 편집기를 떼지 않고, 스크롤 위치를 되돌린다.
+  // 이미 열려 있는 상세를 다시 그릴 때는 스크롤 위치를 되돌린다.
   const y = $('#s-detail').hidden ? null : window.scrollY;
-  mountKeepingEditor(body, nodes, noteEditor(opened.kind, opened.id));
+  body.replaceChildren(...nodes);
+  detailTools.setTarget(opened);
   if (y !== null && window.scrollY !== y) window.scrollTo(0, y);
 }
 
 function closeDetail() {
   opened = null;
+  detailTools.setTarget(null);
   $('#s-detail').hidden = true;
   $('#s-detail-body').replaceChildren();
   $('#s-lists').hidden = false;
