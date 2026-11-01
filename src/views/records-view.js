@@ -3,6 +3,7 @@ import { $, h, formatDate } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { sourcesBlock, metaLine } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
+import { decoratePre } from '../code-block.js';
 import { list } from '../store.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
 
@@ -119,7 +120,7 @@ function recordDetail(r) {
     h('p', { class: 'muted small' }, `${r.topic.path.join(' › ')} · ${formatDate(r.at)}`),
     h('h4', {}, '문제'),
     mdBlock(q.prompt),
-    q.code ? h('pre', {}, h('code', {}, q.code)) : '',
+    q.code ? decoratePre(h('pre', {}, h('code', {}, q.code))) : '',
     q.choices.length ? h('ol', {}, q.choices.map((c) => h('li', {}, c))) : '',
     h('h4', {}, '내 답'),
     h('p', {}, r.userAnswer || '(모르겠어요)'),
