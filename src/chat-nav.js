@@ -1,10 +1,26 @@
-// 긴 대화에서 질문 사이를 옮겨 다니는 떠 있는 버튼과 질문 목록.
+// 긴 대화에서 질문 사이를 옮겨 다니는 떠 있는 버튼과 질문 목록. 목록은 질문마다 답변의 첫 블록 글도 보여 준다.
 // 「묻기」, 「더 물어보기」, 기록의 상세 화면이 같이 쓴다. 기록의 상세 화면은 addTool 로 즐겨찾기와 메모 버튼을 같은 줄에 넣는다.
 // 질문으로 옮길 때 방문 기록을 하나 넣어, 뒤로 가기가 옮기기 전 위치로 돌아가게 한다 (router.js).
 import { h } from './dom.js';
 import { pushPosition } from './router.js';
 
 const TITLE_LENGTH = 60;
+
+// 공백을 정리해 TITLE_LENGTH 자로 자른다. 잘렸으면 끝에 「…」 를 붙인다.
+function shorten(text) {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  return flat.length > TITLE_LENGTH ? `${flat.slice(0, TITLE_LENGTH)}…` : flat;
+}
+
+// 답변 안의 첫 블록 (p, h1~h6, li, pre 중 글이 있는 첫 요소) 의 글. 없으면 답변 전체의 글.
+// 블록들을 이은 textContent 는 제목과 문단 글자가 붙으므로 쓰지 않는다.
+function firstBlockText(answer) {
+  for (const block of answer.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, pre')) {
+    const text = block.textContent.trim();
+    if (text) return text;
+  }
+  return answer.textContent.trim();
+}
 
 // 상단바와 하단 탭에 가리지 않게 el 의 위쪽이나 아래쪽으로 스크롤한다.
 function scrollToEdge(el, edge) {
@@ -26,7 +42,7 @@ export function attachChatNav(container, { questionSelector, bottom = container,
   const panel = h(
     'div',
     { class: 'chat-nav-panel', hidden: true },
-    h('p', { class: 'muted small' }, '질문으로 이동'),
+    h('p', { class: 'muted small' }, '질문·답변으로 이동'),
     list,
     h(
       'div',
@@ -65,9 +81,13 @@ export function attachChatNav(container, { questionSelector, bottom = container,
     if (panel.hidden) {
       list.replaceChildren(
         ...questions().map((q) => {
-          const text = q.textContent.trim().split('\n')[0];
-          const title = text.length > TITLE_LENGTH ? `${text.slice(0, TITLE_LENGTH)}…` : text;
-          return h('li', {}, h('button', { type: 'button', class: 'chat-nav-item', onclick: () => go(q, 'top') }, title));
+          const items = [h('button', { type: 'button', class: 'chat-nav-item', onclick: () => go(q, 'top') }, shorten(q.textContent.trim().split('\n')[0]))];
+          const answer = q.nextElementSibling;
+          const answerText = answer ? shorten(firstBlockText(answer)) : '';
+          if (answerText) {
+            items.push(h('button', { type: 'button', class: 'chat-nav-item chat-nav-answer', onclick: () => go(answer, 'top') }, `답: ${answerText}`));
+          }
+          return h('li', {}, ...items);
         }),
       );
     }

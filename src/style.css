@@ -257,6 +257,13 @@ label.check input { width: auto; margin: 0; }
   text-align: left;
   font-size: 0.9rem;
 }
+.chat-nav-item.chat-nav-answer {
+  width: calc(100% - 14px);
+  min-height: 32px;
+  margin-left: 14px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
 
 .list { list-style: none; margin: 0; padding: 0; }
 .list > li { padding: 10px 0; border-bottom: 1px solid var(--border); }
