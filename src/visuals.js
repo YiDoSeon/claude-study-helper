@@ -6,10 +6,33 @@ import { openZoom } from './visual-zoom.js';
 const KINDS = ['mermaid', 'svg', 'html'];
 const INLINE_HTML_MAX = 0.8; // 화면 높이에 대한 html 그림 최대 높이 비율
 const SAFE_HREF = /^(#|data:image\/)/i;
+let scopeSeq = 0;
+
+// 한 문서에 svg 가 여럿이면 url(#arrow) 같은 참조가 문서에서 처음 나온 같은 id 를 가리켜,
+// 다른 그림 (숨은 화면의 것 포함) 의 마커가 붙는다. 그림마다 id 에 접두어를 붙이고 참조도 바꾼다.
+export function scopeSvgIds(svg) {
+  const prefix = `v${++scopeSeq}-`;
+  const ids = new Set();
+  for (const el of svg.querySelectorAll('[id]')) {
+    ids.add(el.id);
+    el.id = prefix + el.id;
+  }
+  if (!ids.size) return svg;
+  const fixRefs = (text) => text.replace(/#([\w.-]+)/g, (m, id) => (ids.has(id) ? `#${prefix}${id}` : m));
+  for (const el of [svg, ...svg.querySelectorAll('*')]) {
+    for (const attr of [...el.attributes]) {
+      const isHref = attr.name === 'href' || attr.name === 'xlink:href';
+      if ((isHref && attr.value.trim().startsWith('#')) || attr.value.includes('url(')) attr.value = fixRefs(attr.value);
+    }
+  }
+  for (const style of svg.querySelectorAll('style')) style.textContent = fixRefs(style.textContent);
+  return svg;
+}
 
 // svg 문자열을 걸러 <svg> 요소 하나로 만든다. 없으면 null.
 export function sanitizeSvg(code) {
-  const clean = DOMPurify.sanitize(code, { USE_PROFILES: { svg: true, svgFilters: true } });
+  // use 는 같은 그림 안의 도형을 다시 쓰는 데 흔히 쓰여 남기고, 아래에서 # 참조만 허용한다.
+  const clean = DOMPurify.sanitize(code, { USE_PROFILES: { svg: true, svgFilters: true }, ADD_TAGS: ['use'] });
   const tpl = document.createElement('template');
   tpl.innerHTML = clean;
   const svg = tpl.content.querySelector('svg');
@@ -18,7 +41,8 @@ export function sanitizeSvg(code) {
   for (const el of svg.querySelectorAll('use, image, feImage')) {
     for (const name of ['href', 'xlink:href']) {
       const value = el.getAttribute(name);
-      if (value != null && !SAFE_HREF.test(value.trim())) el.removeAttribute(name);
+      const safe = el.localName === 'use' ? value?.trim().startsWith('#') : SAFE_HREF.test(value?.trim() ?? '');
+      if (value != null && !safe) el.removeAttribute(name);
     }
   }
   for (const style of svg.querySelectorAll('style')) {
@@ -31,7 +55,7 @@ export function sanitizeSvg(code) {
   }
   svg.style.maxWidth = '100%';
   svg.style.height = 'auto';
-  return svg;
+  return scopeSvgIds(svg);
 }
 
 function languageOf(pre) {
