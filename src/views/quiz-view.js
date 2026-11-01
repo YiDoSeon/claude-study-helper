@@ -3,6 +3,7 @@ import { $, h, fillSelect, remember } from '../dom.js';
 import { renderMarkdown, renderCode } from '../markdown.js';
 import { appendBubble, appendMeta, streamInto, showBubbleError } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
+import { attachDockToggle, expandDock } from '../dock-toggle.js';
 import { appendPairActions, attachExport } from '../qa-export.js';
 import { TOPICS, DIFFICULTIES, QUESTION_TYPES, CUSTOM_CATEGORY_ID, CUSTOM_CATEGORY_LABEL } from '../topics.js';
 import { generateQuestion, gradeChoice, gradeAnswer, tutorContext, askTutor } from '../quiz.js';
@@ -274,6 +275,7 @@ function openTutor() {
     tutorPicker.set(resolveChoice(current.record?.tutorChoice, current.record?.tutor));
   }
   $('#tutor').hidden = false;
+  expandDock();
   $('#tutor-input').focus();
   $('#tutor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -373,6 +375,7 @@ export function initQuizView({ onContinueInAsk }) {
   $('#tutor-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#tutor-form').requestSubmit();
   });
+  attachDockToggle($('#tutor .chat-dock'));
   const nav = attachChatNav($('#tutor-log'), { questionSelector: '.bubble.user', bottom: $('#tutor-form'), dock: $('#tutor .chat-dock') });
   attachExport(nav, $('#tutor-log'), () => (current?.record?.tutor?.length ? { title: tutorTitle(current.record), pairs: current.record.tutor } : null));
 }

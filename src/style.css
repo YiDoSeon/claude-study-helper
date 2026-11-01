@@ -193,6 +193,22 @@ pre {
   border-top: 1px solid var(--border);
   border-radius: 0 0 var(--radius) var(--radius);
 }
+/* 입력 영역 접기 손잡이 (dock-toggle.js). 위쪽 경계선 가운데에 걸쳐 dock 높이를 늘리지 않는다. 오른쪽의 질문 목록 버튼과는 가운데라 겹치지 않는다. */
+.dock-toggle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-height: 24px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+/* 접힌 상태: 손잡이만 남기고 얇은 띠로 줄인다. chat-nav.js 의 ResizeObserver 가 줄어든 높이를 다시 잰다. */
+.chat-dock.collapsed { padding-top: 6px; padding-bottom: 6px; }
+.chat-dock.collapsed > :not(.dock-toggle) { display: none; }
 /* 문제 출제·채점에 쓰는 설정 한 줄 (model-hint.js). */
 .model-hint { margin: 6px 0 0; }
 /* 입력 영역의 모델·노력 칸 (chat-choice.js). 두 칸을 한 줄에 둔다. */

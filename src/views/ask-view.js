@@ -2,6 +2,7 @@
 import { $, h, fillSelect, remember } from '../dom.js';
 import { appendBubble, appendSources, appendMeta, streamInto, showBubbleError, chatContextBlock } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
+import { attachDockToggle, expandDock } from '../dock-toggle.js';
 import { appendPairActions, attachExport } from '../qa-export.js';
 import { tapConfirm } from '../tap-confirm.js';
 import { TOPICS } from '../topics.js';
@@ -68,6 +69,7 @@ function newChat() {
   $('#a-log').replaceChildren();
   $('#a-input').value = '';
   renderChrome();
+  expandDock();
   $('#a-input').focus();
 }
 
@@ -175,6 +177,7 @@ export function continueFromRecord(record) {
     const added = tutor.filter((t) => !known.has(t.at));
     const history = [...existing.history, ...added].sort((a, b) => a.at - b.at);
     resumeChat(added.length ? put('chats', { ...existing, history }) : existing);
+    expandDock();
     $('#a-input').focus();
     return;
   }
@@ -192,6 +195,7 @@ export function continueFromRecord(record) {
   // 주고받은 질문이 없으면 첫 답을 받을 때 저장한다.
   if (saved.history.length) put('chats', saved);
   resumeChat(saved);
+  expandDock();
   $('#a-input').focus();
 }
 
@@ -239,6 +243,7 @@ export function initAskView({ onQuiz }) {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#a-form').requestSubmit();
   });
   tapConfirm($('#a-new'), { confirmLabel: '한 번 더 누르면 새 대화', onConfirm: newChat });
+  attachDockToggle($('#view-ask .chat-dock'));
   const nav = attachChatNav($('#a-log'), { questionSelector: '.bubble.user', bottom: $('#a-form'), dock: $('#view-ask .chat-dock') });
   attachExport(nav, $('#a-log'), () => chat && { title: chat.title, context: chat.context, pairs: chat.history });
   tapConfirm($('#a-quiz'), { confirmLabel: '한 번 더 누르면 문제 풀기', onConfirm: quizFromChat });

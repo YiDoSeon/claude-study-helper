@@ -11,6 +11,7 @@ const DEFAULTS = {
   deviceName: '',
   deviceId: '', // 사용액 기록에서 기기를 구분하는 id. usage.js 가 처음 쓸 때 만든다.
   usageCycleDay: '11', // 사용액을 새로 세기 시작하는 날 (API 크레딧이 채워지는 날)
+  dockCollapsed: '', // '1' 이면 입력 영역 (.chat-dock) 을 접는다 (dock-toggle.js)
 };
 
 function read(name) {
