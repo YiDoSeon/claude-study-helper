@@ -359,3 +359,24 @@ th, td { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: l
 #r-count { margin: 8px 2px; }
 #r-count[hidden] { display: none; }
 #r-filter[hidden] { display: none; }
+
+/* 아래쪽 알림 (toast.js): 하단 탭 (57px) 바로 위, 가운데. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(69px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 8px 8px 14px;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+.toast button { min-height: 36px; padding: 4px 12px; }
+/* 기록 상세의 버튼 줄은 버튼이 넷까지 늘어나므로 좁으면 줄을 바꾼다. */
+#s-detail-dock .actions { flex-wrap: wrap; }

@@ -5,7 +5,7 @@ import { usageSummary, startUsageTracking } from './usage.js';
 import { onChange } from './store.js';
 import { startAutoSync, onStatus } from './sync.js';
 import { initQuizView, startReview, startFromChat } from './views/quiz-view.js';
-import { initAskView, resumeChat, continueFromRecord } from './views/ask-view.js';
+import { initAskView, resumeChat, continueFromRecord, closeChatIfOpen } from './views/ask-view.js';
 import { initReviewView, renderReviewView } from './views/review-view.js';
 import { initRecordsView, renderRecordsView, showRecordsDetail } from './views/records-view.js';
 import { initRouter, navigate } from './router.js';
@@ -98,6 +98,9 @@ function init() {
     onContinue: continueInAsk,
     onOpen: (detail) => navigate({ view: 'records', detail, fromList: true }),
     onBack: backToRecordsList,
+    onDeleted: (kind, id) => {
+      if (kind === 'chat') closeChatIfOpen(id);
+    },
   });
   initSettingsView({ onKeyChange: updateKeyNotice, onUsageChange: updateUsageStatus });
 

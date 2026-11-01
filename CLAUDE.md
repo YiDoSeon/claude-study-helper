@@ -21,6 +21,8 @@
 - 동기화할 데이터는 `store.js` 의 `COLLECTIONS` 에 컬렉션으로 둔다.
 - `mergeData` 는 항목 단위로 합친다. 같은 id 면 `updatedAt` 이 큰 항목 하나만 남는다.
 - 그래서 기존 항목 (`records`, `chats` 등) 에 필드를 더해 `put` 하면 항목 전체의 `updatedAt` 이 바뀌어, 아직 받아 오지 않은 다른 기기의 변경을 덮는다. 사용자가 따로 바꾸는 값 (즐겨찾기, 메모) 은 별도 컬렉션에 둔다.
+- 삭제는 항목을 빼지 않고 `store.js` 의 `remove(collection, id)` 로 `{ id, deleted: true, updatedAt }` 표시로 바꾼다. 빼면 합칠 때 되살아난다. `list`, `get` 은 이 표시를 돌려주지 않고 `getData()` 는 돌려준다.
+- `mergeData` 는 같은 id 에서 한쪽이라도 `deleted: true` 면 `updatedAt` 과 상관없이 삭제가 이긴다. 그래서 저장한 삭제는 되돌릴 수 없고, `trash.js` 는 저장을 되돌리기 알림이 닫힐 때까지 미룬다.
 - 이전 버전 앱이 동기화하면 모르는 컬렉션을 빼고 올린다. 새 버전 기기가 다시 올리므로 사라지지는 않는다.
 
 ## 빌드와 테스트

@@ -30,7 +30,12 @@ export function tapConfirm(button, { confirmLabel, onConfirm, timeout = CONFIRM_
   });
 
   // 버튼 밖을 누르면 되돌린다. 버튼 자신을 누른 click 은 위 처리가 맡는다.
-  document.addEventListener('click', (event) => {
+  // 다시 그려져 문서에서 빠진 버튼이면 리스너를 뗀다 (기록 상세는 그릴 때마다 버튼을 새로 만든다).
+  document.addEventListener('click', function onOutside(event) {
+    if (!button.isConnected) {
+      document.removeEventListener('click', onOutside);
+      return;
+    }
     if (!button.contains(event.target)) reset();
   });
   // 다른 화면으로 가서 숨겨져도 되돌린다.

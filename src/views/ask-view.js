@@ -64,6 +64,15 @@ function newChat() {
   $('#a-input').focus();
 }
 
+// 기록에서 지운 대화가 지금 열려 있으면 새 대화 상태로 비운다. 비우지 않으면 이어 쓸 때 put 이 대화를 다시 살린다.
+export function closeChatIfOpen(id) {
+  if (chat?.id !== id) return;
+  chat = null;
+  $('#a-log').replaceChildren();
+  $('#a-input').value = '';
+  renderChrome();
+}
+
 async function send(event) {
   event.preventDefault();
   const input = $('#a-input');

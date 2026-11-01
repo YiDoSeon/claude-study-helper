@@ -37,11 +37,11 @@ export const REVIEW_SORTS = [
   { value: 'cat', label: '분야순' },
 ];
 // 화면마다 보일 칸. fields 를 주지 않으면 기록 화면의 칸이다.
-export const RECORD_FIELDS = ['q', 'cat', 'period', 'verdict', 'sort', 'starred', 'noted'];
+export const RECORD_FIELDS = ['q', 'cat', 'period', 'verdict', 'sort', 'starred', 'noted', 'archived'];
 export const REVIEW_FIELDS = ['q', 'cat', 'status', 'sort'];
 
 export const DEFAULT_FILTER = {
-  q: '', cat: '', period: 'all', from: '', to: '', verdict: 'all', status: 'all', sort: 'new', starred: false, noted: false,
+  q: '', cat: '', period: 'all', from: '', to: '', verdict: 'all', status: 'all', sort: 'new', starred: false, noted: false, archived: false,
 };
 
 const has = (options, value) => options.some((o) => o.value === value);
@@ -60,12 +60,13 @@ function loadState(key, sorts, defaultSort) {
   if (has(sorts, saved.sort)) s.sort = saved.sort;
   s.starred = saved.starred === true;
   s.noted = saved.noted === true;
+  s.archived = saved.archived === true;
   return s;
 }
 
 // 정렬을 뺀 필터가 하나라도 걸려 있는지.
 export function isFiltered(s) {
-  return s.q.trim() !== '' || s.cat !== '' || s.period !== 'all' || s.verdict !== 'all' || s.status !== 'all' || s.starred || s.noted;
+  return s.q.trim() !== '' || s.cat !== '' || s.period !== 'all' || s.verdict !== 'all' || s.status !== 'all' || s.starred || s.noted || s.archived;
 }
 
 // 'YYYY-MM-DD' 를 기기 현지 날짜의 0시 (ms) 로. 모양이 틀리면 null.
@@ -199,6 +200,7 @@ export function createFilterBar(root, { key, onChange, verdict = true, fields = 
   const statusSel = h('select', { name: 'status' }, ...optionList(STATUSES));
   const starred = h('input', { type: 'checkbox', name: 'starred' });
   const noted = h('input', { type: 'checkbox', name: 'noted' });
+  const archived = h('input', { type: 'checkbox', name: 'archived' });
   const clear = h('button', { type: 'button', class: 'filter-clear link' }, '필터 지우기');
 
   const field = (text, control) => h('label', { class: 'filter-field' }, text, control);
@@ -218,7 +220,7 @@ export function createFilterBar(root, { key, onChange, verdict = true, fields = 
       on('sort') ? field('정렬', sort) : '',
     ),
     on('period') ? dates : '',
-    h('div', { class: 'filter-checks' }, on('starred') ? check('즐겨찾기만', starred) : '', on('noted') ? check('메모 있는 것만', noted) : '', clear),
+    h('div', { class: 'filter-checks' }, on('starred') ? check('즐겨찾기만', starred) : '', on('noted') ? check('메모 있는 것만', noted) : '', on('archived') ? check('보관함', archived) : '', clear),
   );
 
   function syncUi() {
@@ -231,6 +233,7 @@ export function createFilterBar(root, { key, onChange, verdict = true, fields = 
     sort.value = state.sort;
     starred.checked = state.starred;
     noted.checked = state.noted;
+    archived.checked = state.archived;
     dates.hidden = state.period !== 'custom';
     clear.hidden = !isFiltered(state);
     renderCats();
@@ -277,6 +280,7 @@ export function createFilterBar(root, { key, onChange, verdict = true, fields = 
   bind(sort, 'sort', (el) => el.value);
   bind(starred, 'starred', (el) => el.checked);
   bind(noted, 'noted', (el) => el.checked);
+  bind(archived, 'archived', (el) => el.checked);
   q.addEventListener('input', () => {
     state.q = q.value;
     save();

@@ -7,6 +7,9 @@ import { decoratePre } from '../code-block.js';
 import { list } from '../store.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
 import { isStarred } from '../favorites.js';
+import { isArchived, toggleArchive } from '../archive.js';
+import { deleteItem, isPendingDelete, onTrashChange } from '../trash.js';
+import { tapConfirm } from '../tap-confirm.js';
 import { getNote } from '../notes.js';
 import { initDetailTools } from '../detail-tools.js';
 import { splitTerms, recordFields, chatFields, searchFields, markParts } from '../list-search.js';
@@ -21,6 +24,8 @@ let filterBar = null;
 let onResumeChat = () => {};
 let onContinueRecord = () => {};
 let onOpenDetail = () => {};
+let onBackToList = () => {};
+let onItemDeleted = () => {};
 // 상세 화면에 연 항목. { kind: 'record' | 'chat', id } 이고, 목록을 보고 있으면 null.
 let opened = null;
 // 상세 화면 옆의 즐겨찾기·메모 도구 (detail-tools.js). initRecordsView 가 만든다.
@@ -28,10 +33,15 @@ let detailTools = null;
 
 // 상세 화면을 여닫는 것은 방문 기록에 남도록 main.js 가 router 로 처리한다.
 // onOpen(target) 은 항목을 눌렀을 때, onBack() 은 「← 목록으로」 를 눌렀을 때 부른다.
-export function initRecordsView({ onResume, onContinue, onOpen, onBack }) {
+// onDeleted(kind, id) 는 삭제해서 화면에서 숨긴 직후 부른다 (다른 화면이 그 항목을 비우게).
+export function initRecordsView({ onResume, onContinue, onOpen, onBack, onDeleted = () => {} }) {
   onResumeChat = onResume;
   onContinueRecord = onContinue;
   onOpenDetail = onOpen;
+  onBackToList = onBack;
+  onItemDeleted = onDeleted;
+  // 삭제를 미뤄 두거나 되돌리면 목록과 상세를 다시 그린다.
+  onTrashChange(() => renderRecordsView());
   $('#s-back').addEventListener('click', onBack);
   detailTools = initDetailTools(attachChatNav($('#s-detail-body'), { questionSelector: '.qa-q', dock: $('#s-detail-dock') }));
   // 필터 줄은 여기서 한 번만 만든다. 다시 그리면 검색칸의 포커스와 글자가 사라진다.
@@ -144,7 +154,7 @@ const recordCat = (r) => pathText(recordPath(r));
 const chatCat = (c) => pathText(chatPath(c));
 const chatTime = (c) => c.updatedAt ?? c.at;
 
-// 분야·결과를 뺀 필터 (기간, 즐겨찾기, 메모, 검색) 를 통과한 항목을 { item, hit } 로 준다.
+// 분야·결과·보관을 뺀 필터 (기간, 즐겨찾기, 메모, 검색) 를 통과한 항목을 { item, hit, archived } 로 준다.
 function baseFilter(items, kind, f) {
   const range = periodRange(f);
   const terms = splitTerms(f.q);
@@ -155,11 +165,15 @@ function baseFilter(items, kind, f) {
     const note = getNote(kind, item.id);
     if (f.noted && note.trim() === '') continue;
     const found = searchFields(kind === 'record' ? recordFields(item, note) : chatFields(item, note), terms);
-    if (found.matched) out.push({ item, hit: found.hit });
+    if (found.matched) out.push({ item, hit: found.hit, archived: isArchived(kind, item.id) });
   }
   return out;
 }
 
+// 보관 칸이 꺼져 있으면 보관하지 않은 것만, 켜져 있으면 보관한 것만 남긴다.
+const archiveView = (rows, f) => rows.filter((x) => x.archived === f.archived);
+
+// total 은 보관을 뺀 개수이고, 「보관함」 을 켜면 보관한 개수다.
 function countTitle(base, total, matched) {
   return isFiltered(filterBar.state) ? `${base} · ${total}개 중 ${matched}개` : `${base} · ${total}개`;
 }
@@ -206,33 +220,35 @@ function renderStatsTable(rows, totalRecords, f) {
 
 function renderLists() {
   const f = filterBar.state;
-  const allChats = list('chats');
-  const allRecords = list('records');
+  const allChats = list('chats').filter((c) => !isPendingDelete('chat', c.id));
+  const allRecords = list('records').filter((x) => !isPendingDelete('record', x.id));
   filterBar.setCategories(categoryOptions([...allRecords.map(recordPath), ...allChats.map(chatPath)]));
   const terms = splitTerms(f.q);
 
   // 푼 문제. 정답률 표는 분야·결과 필터를 뺀 나머지 필터로 계산한다.
   const recordBase = baseFilter(allRecords, 'record', f);
   renderStatsTable(recordBase, allRecords.length, f);
+  const recordTotal = allRecords.filter((x) => isArchived('record', x.id) === f.archived).length;
+  const chatTotal = allChats.filter((x) => isArchived('chat', x.id) === f.archived).length;
   const recordRows = sortItems(
-    recordBase.filter(({ item }) => inCategory(recordPath(item), f.cat) && (f.verdict === 'all' || item.verdict === f.verdict)),
+    archiveView(recordBase, f).filter(({ item }) => inCategory(recordPath(item), f.cat) && (f.verdict === 'all' || item.verdict === f.verdict)),
     f.sort,
     (x) => x.item.at,
     (x) => recordCat(x.item),
   );
-  $('#s-recent-title').textContent = countTitle('최근에 푼 문제', allRecords.length, recordRows.length);
+  $('#s-recent-title').textContent = countTitle('최근에 푼 문제', recordTotal, recordRows.length);
   $('#s-recent').replaceChildren(...recordRows.slice(0, shown.record).map((x) => recordRow(x.item, x.hit, terms)));
   moreButton($('#s-recent-more'), 'record', recordRows.length);
 
   // 대화. 결과 필터는 적용하지 않는다.
   const chatRows = sortItems(
-    baseFilter(allChats, 'chat', f).filter(({ item }) => inCategory(chatPath(item), f.cat)),
+    archiveView(baseFilter(allChats, 'chat', f), f).filter(({ item }) => inCategory(chatPath(item), f.cat)),
     f.sort,
     (x) => chatTime(x.item),
     (x) => chatCat(x.item),
   );
   $('#s-chats-card').hidden = allChats.length === 0;
-  $('#s-chats-title').textContent = countTitle('묻기 대화', allChats.length, chatRows.length);
+  $('#s-chats-title').textContent = countTitle('묻기 대화', chatTotal, chatRows.length);
   $('#s-chats').replaceChildren(...chatRows.slice(0, shown.chat).map((x) => chatRow(x.item, x.hit, terms)));
   moreButton($('#s-chats-more'), 'chat', chatRows.length);
 }
@@ -267,11 +283,22 @@ function recordActions(r) {
     { class: 'actions' },
     h('button', { type: 'button', onclick: () => onContinueRecord(r) }, '이 문제로 묻기'),
     reviewAction(r),
+    ...archiveDeleteButtons('record', r.id),
   );
 }
 
+// 「보관」 (보관한 항목이면 「보관 해제」) 과 두 번 눌러야 실행되는 「삭제」.
+function archiveDeleteButtons(kind, id) {
+  const del = h('button', { type: 'button' }, '삭제');
+  tapConfirm(del, {
+    confirmLabel: '한 번 더 누르면 삭제',
+    onConfirm: () => deleteItem(kind, id, { onHide: () => { onItemDeleted(kind, id); onBackToList(); } }),
+  });
+  return [h('button', { type: 'button', onclick: () => toggleArchive(kind, id) }, isArchived(kind, id) ? '보관 해제' : '보관'), del];
+}
+
 function chatActions(c) {
-  return h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, '이어서 묻기'));
+  return h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, '이어서 묻기'), ...archiveDeleteButtons('chat', c.id));
 }
 
 function chatDetail(c) {
@@ -285,7 +312,7 @@ function chatDetail(c) {
 // 열린 항목을 다시 그린다. 항목이 없어졌으면 목록으로 돌아간다.
 function renderDetail() {
   const item = list(opened.kind === 'record' ? 'records' : 'chats').find((x) => x.id === opened.id);
-  if (!item) {
+  if (!item || isPendingDelete(opened.kind, opened.id)) {
     closeDetail();
     return;
   }

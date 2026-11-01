@@ -1,10 +1,10 @@
 // 학습 기록. 브라우저에 저장하고, sync.js 가 GitHub 저장소와 합친다.
-// 모든 항목은 id 로 구분하고 updatedAt 이 더 큰 쪽이 이긴다.
+// 모든 항목은 id 로 구분하고 updatedAt 이 더 큰 쪽이 이긴다. 단 삭제 표시 (deleted: true) 는 updatedAt 과 상관없이 이긴다.
 const KEY = 'study.data.v1';
-const COLLECTIONS = ['records', 'reviews', 'topics', 'chats', 'usage', 'stars', 'notes'];
+const COLLECTIONS = ['records', 'reviews', 'topics', 'chats', 'usage', 'stars', 'notes', 'archive'];
 
 function emptyData() {
-  return { version: 1, records: {}, reviews: {}, topics: {}, chats: {}, usage: {}, stars: {}, notes: {} };
+  return { version: 1, records: {}, reviews: {}, topics: {}, chats: {}, usage: {}, stars: {}, notes: {}, archive: {} };
 }
 
 function normalize(raw) {
@@ -56,12 +56,20 @@ export function put(collection, item) {
   return data[collection][item.id];
 }
 
+// 삭제 표시를 단 항목은 돌려주지 않는다. getData() 에는 남아 동기화와 내보내기에 쓰인다.
 export function list(collection) {
-  return Object.values(data[collection]);
+  return Object.values(data[collection]).filter((item) => !item.deleted);
 }
 
 export function get(collection, id) {
-  return data[collection][id];
+  const item = data[collection][id];
+  return item?.deleted ? undefined : item;
+}
+
+// 삭제: 항목을 빼면 다른 기기와 합칠 때 되살아나므로 내용 없는 삭제 표시로 바꾼다.
+export function remove(collection, id) {
+  data[collection][id] = { id, deleted: true, updatedAt: Date.now() };
+  persist('local');
 }
 
 export function mergeData(a, b) {
@@ -72,7 +80,8 @@ export function mergeData(a, b) {
     out[c] = { ...left[c] };
     for (const [id, item] of Object.entries(right[c])) {
       const mine = out[c][id];
-      if (!mine || (item.updatedAt ?? 0) > (mine.updatedAt ?? 0)) out[c][id] = item;
+      // 한쪽이라도 삭제 표시면 삭제가 이긴다. 아니면 updatedAt 이 큰 쪽.
+      if (!mine || (!mine.deleted && (item.deleted || (item.updatedAt ?? 0) > (mine.updatedAt ?? 0)))) out[c][id] = item;
     }
   }
   return out;
