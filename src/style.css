@@ -297,7 +297,7 @@ label.check input { width: auto; margin: 0; }
 .filter-bar .filter-check input { display: inline-block; width: auto; margin: 0; }
 .filter-clear { margin-left: auto; }
 .row-hit { display: block; margin-top: 2px; overflow-wrap: anywhere; }
-.row-hit mark { background: var(--warn-bg); color: var(--warn); border-radius: 2px; padding: 0 1px; }
+.row-hit mark, .record-row mark, #r-list mark, #r-off mark { background: var(--warn); color: var(--bg); border-radius: 2px; padding: 0 1px; }
 #s-table tbody tr[data-cat] { cursor: pointer; }
 #s-table tbody tr.selected { background: var(--warn-bg); font-weight: 600; }
 button.more { display: block; width: 100%; margin-top: 8px; }

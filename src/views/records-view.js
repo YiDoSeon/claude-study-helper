@@ -9,8 +9,8 @@ import { findItemForRecord, addFromRecord } from '../review.js';
 import { isStarred } from '../favorites.js';
 import { getNote } from '../notes.js';
 import { initDetailTools } from '../detail-tools.js';
-import { splitTerms, recordFields, chatFields, searchFields } from '../list-search.js';
-import { createFilterBar, periodRange, inPeriod, sortItems, isFiltered, compareText } from '../list-filter.js';
+import { splitTerms, recordFields, chatFields, searchFields, markParts } from '../list-search.js';
+import { createFilterBar, periodRange, inPeriod, sortItems, isFiltered, inCategory, categoryOptions, pathText, PATH_SEP } from '../list-filter.js';
 
 const VERDICT_LABEL = { correct: '정답', partial: '부분', wrong: '오답' };
 const PAGE = 30;
@@ -98,7 +98,12 @@ function hitLine(hit) {
   return h('span', { class: 'row-hit muted small' }, `${hit.label}: `, hit.parts.map((p) => (p.mark ? h('mark', {}, p.text) : p.text)));
 }
 
-function recordRow(r, hit) {
+// 제목 글 안의 검색어를 mark 로 감싼 노드들.
+function titleNodes(text, terms) {
+  return markParts(text, terms).map((p) => (p.mark ? h('mark', {}, p.text) : p.text));
+}
+
+function recordRow(r, hit, terms) {
   return h(
     'li',
     {},
@@ -108,7 +113,7 @@ function recordRow(r, hit) {
       starMark('record', r.id),
       h('span', { class: `pill ${r.verdict}` }, VERDICT_LABEL[r.verdict]),
       ' ',
-      h('strong', {}, r.question.concept),
+      h('strong', {}, ...titleNodes(r.question.concept, terms)),
       h('span', { class: 'muted small' }, ` · ${r.topic.path.join(' › ')} · ${formatDate(r.at)}`),
       noteMark('record', r.id),
       hitLine(hit),
@@ -116,7 +121,7 @@ function recordRow(r, hit) {
   );
 }
 
-function chatRow(c, hit) {
+function chatRow(c, hit, terms) {
   return h(
     'li',
     {},
@@ -124,7 +129,7 @@ function chatRow(c, hit) {
       'button',
       { type: 'button', class: 'record-row', 'data-key': `chat:${c.id}`, onclick: () => onOpenDetail({ kind: 'chat', id: c.id }) },
       starMark('chat', c.id),
-      h('strong', {}, c.title),
+      h('strong', {}, ...titleNodes(c.title, terms)),
       h('span', { class: 'muted small' }, ` · ${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
       noteMark('chat', c.id),
       hitLine(hit),
@@ -132,8 +137,11 @@ function chatRow(c, hit) {
   );
 }
 
-const recordCat = (r) => r.topic.path[0] ?? '기타';
-const chatCat = (c) => c.category || '자유 질문';
+// 항목의 분야 경로. 대화는 세부 분야 (chat.topic) 가 있으면 그 경로, 없으면 맨 위 분야 하나.
+const recordPath = (r) => (r.topic.path.length ? r.topic.path : ['기타']);
+const chatPath = (c) => (c.topic?.path?.length ? c.topic.path : [c.category || '자유 질문']);
+const recordCat = (r) => pathText(recordPath(r));
+const chatCat = (c) => pathText(chatPath(c));
 const chatTime = (c) => c.updatedAt ?? c.at;
 
 // 분야·결과를 뺀 필터 (기간, 즐겨찾기, 메모, 검색) 를 통과한 항목을 { item, hit } 로 준다.
@@ -162,6 +170,8 @@ function moreButton(el, kind, total) {
   el.textContent = `더 보기 (남은 ${Math.max(0, total - shown[kind])}개)`;
 }
 
+const topOf = (cat) => cat.split(PATH_SEP)[0];
+
 function renderStatsTable(rows, totalRecords, f) {
   const stats = statsByCategory(rows.map((x) => x.item));
   $('#s-empty').hidden = stats.length > 0;
@@ -174,9 +184,9 @@ function renderStatsTable(rows, totalRecords, f) {
         'tr',
         {
           'data-cat': s.cat,
-          class: f.cat === s.cat ? 'selected' : '',
+          class: topOf(f.cat) === s.cat ? 'selected' : '',
           tabindex: 0,
-          'aria-pressed': f.cat === s.cat ? 'true' : 'false',
+          'aria-pressed': topOf(f.cat) === s.cat ? 'true' : 'false',
           onclick: () => toggle(s.cat),
           onkeydown: (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -198,31 +208,32 @@ function renderLists() {
   const f = filterBar.state;
   const allChats = list('chats');
   const allRecords = list('records');
-  filterBar.setCategories([...new Set([...allRecords.map(recordCat), ...allChats.map(chatCat)])].sort(compareText));
+  filterBar.setCategories(categoryOptions([...allRecords.map(recordPath), ...allChats.map(chatPath)]));
+  const terms = splitTerms(f.q);
 
   // 푼 문제. 정답률 표는 분야·결과 필터를 뺀 나머지 필터로 계산한다.
   const recordBase = baseFilter(allRecords, 'record', f);
   renderStatsTable(recordBase, allRecords.length, f);
   const recordRows = sortItems(
-    recordBase.filter(({ item }) => (f.cat === '' || recordCat(item) === f.cat) && (f.verdict === 'all' || item.verdict === f.verdict)),
+    recordBase.filter(({ item }) => inCategory(recordPath(item), f.cat) && (f.verdict === 'all' || item.verdict === f.verdict)),
     f.sort,
     (x) => x.item.at,
     (x) => recordCat(x.item),
   );
   $('#s-recent-title').textContent = countTitle('최근에 푼 문제', allRecords.length, recordRows.length);
-  $('#s-recent').replaceChildren(...recordRows.slice(0, shown.record).map((x) => recordRow(x.item, x.hit)));
+  $('#s-recent').replaceChildren(...recordRows.slice(0, shown.record).map((x) => recordRow(x.item, x.hit, terms)));
   moreButton($('#s-recent-more'), 'record', recordRows.length);
 
   // 대화. 결과 필터는 적용하지 않는다.
   const chatRows = sortItems(
-    baseFilter(allChats, 'chat', f).filter(({ item }) => f.cat === '' || chatCat(item) === f.cat),
+    baseFilter(allChats, 'chat', f).filter(({ item }) => inCategory(chatPath(item), f.cat)),
     f.sort,
     (x) => chatTime(x.item),
     (x) => chatCat(x.item),
   );
   $('#s-chats-card').hidden = allChats.length === 0;
   $('#s-chats-title').textContent = countTitle('묻기 대화', allChats.length, chatRows.length);
-  $('#s-chats').replaceChildren(...chatRows.slice(0, shown.chat).map((x) => chatRow(x.item, x.hit)));
+  $('#s-chats').replaceChildren(...chatRows.slice(0, shown.chat).map((x) => chatRow(x.item, x.hit, terms)));
   moreButton($('#s-chats-more'), 'chat', chatRows.length);
 }
 

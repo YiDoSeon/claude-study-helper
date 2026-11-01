@@ -54,6 +54,20 @@ export function findRanges(text, terms) {
   return mergeRanges(out);
 }
 
+// text 를 terms 가 나타나는 자리에서 [{ text, mark }] 조각으로 나눈다 (제목 강조용). 못 찾으면 한 조각.
+export function markParts(text, terms) {
+  const raw = String(text ?? '');
+  const parts = [];
+  let at = 0;
+  for (const [x, y] of findRanges(raw, terms)) {
+    if (x > at) parts.push({ text: raw.slice(at, x), mark: false });
+    parts.push({ text: raw.slice(x, y), mark: true });
+    at = y;
+  }
+  if (at < raw.length || !parts.length) parts.push({ text: raw.slice(at), mark: false });
+  return parts;
+}
+
 // 미리보기 글에서 Markdown 기호를 뺀다.
 export function stripMarkdown(text) {
   return String(text ?? '').replace(/[*`#]/g, '');

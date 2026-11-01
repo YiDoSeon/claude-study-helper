@@ -8,6 +8,7 @@ import { generateQuestion, gradeChoice, gradeAnswer, tutorContext, askTutor } fr
 import { describeError } from '../api.js';
 import { getSetting } from '../settings.js';
 import { put, get, list, newId } from '../store.js';
+import { inCategory, lastNode } from '../list-filter.js';
 import { applyResult, dueItems, findItemForRecord, addFromRecord } from '../review.js';
 
 const VERDICT_LABEL = { correct: '정답', partial: '부분 정답', wrong: '오답' };
@@ -226,7 +227,7 @@ function next() {
   resetCardButtons();
   if (current.review) {
     const category = reviewCategory;
-    const [item] = dueItems().filter((r) => category === null || (r.topic.path[0] ?? '기타') === category);
+    const [item] = dueItems().filter((r) => category === null || inCategory(r.topic.path, category));
     if (item) {
       startReview(item, category === null ? undefined : { category });
     } else {
@@ -235,7 +236,7 @@ function next() {
       showPanels({ setup: true, card: false, result: false, tutor: false });
       setStatus(category === null
         ? '추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.'
-        : `${category} 분야의 추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.`);
+        : `${lastNode(category)} 분야의 추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.`);
     }
     return;
   }

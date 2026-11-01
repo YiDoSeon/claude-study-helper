@@ -103,6 +103,45 @@ export function inPeriod(ms, range) {
 // 기기 언어 설정과 상관없이 같은 순서가 되도록 글자 코드 순으로 비교한다 (영문이 한글보다 앞).
 export const compareText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
+// ── 분야 경로 ──
+// 필터 값 cat 은 경로를 ' › ' 로 이은 글자다 (예: '프로그래밍 언어 › C++'). 빈 글자는 전체.
+export const PATH_SEP = ' › ';
+
+export function pathText(path) {
+  return (path && path.length ? path : ['기타']).join(PATH_SEP);
+}
+
+// 항목의 경로가 cat 으로 시작하는지 (마디 단위). 빈 경로는 ['기타'] 로 본다.
+export function inCategory(path, cat) {
+  if (!cat) return true;
+  const want = cat.split(PATH_SEP);
+  const have = path && path.length ? path : ['기타'];
+  if (have.length < want.length) return false;
+  return want.every((seg, i) => have[i] === seg);
+}
+
+// cat 글자의 마지막 마디 (버튼 글자용).
+export function lastNode(cat) {
+  return cat.split(PATH_SEP).pop();
+}
+
+// 경로들에서 분야 선택지를 만든다. 맨 위 분야마다 그 분야와 그 아래 세부 분야를 차례로 둔다.
+export function categoryOptions(paths) {
+  const set = new Map();
+  for (const p of paths) {
+    const path = p && p.length ? p : ['기타'];
+    for (let n = 1; n <= path.length; n++) set.set(path.slice(0, n).join(PATH_SEP), path.slice(0, n));
+  }
+  const cmp = (a, b) => {
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+      const c = compareText(a[i], b[i]);
+      if (c) return c;
+    }
+    return a.length - b.length;
+  };
+  return [...set.entries()].sort((a, b) => cmp(a[1], b[1])).map(([text]) => text);
+}
+
 // 최신순, 오래된순, 분야순 (분야 이름 순, 같은 분야에서는 최신순). 새 배열을 준다.
 export function sortItems(items, sort, getTime, getCat) {
   const arr = [...items];

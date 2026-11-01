@@ -1,7 +1,7 @@
 // 「복습」 화면: 다시 풀 개념 목록. 예정일과 상관없이 풀거나 빼고, 뺀 개념은 다시 넣는다.
 import { $, h, formatDate } from '../dom.js';
-import { splitTerms, searchFields } from '../list-search.js';
-import { createFilterBar, isFiltered, compareText, REVIEW_FIELDS, REVIEW_SORTS } from '../list-filter.js';
+import { splitTerms, searchFields, markParts } from '../list-search.js';
+import { createFilterBar, isFiltered, compareText, inCategory, categoryOptions, pathText, lastNode, REVIEW_FIELDS, REVIEW_SORTS } from '../list-filter.js';
 import { dueItems, pendingItems, offItems, removeItem, restoreItem } from '../review.js';
 
 const STEPS = 5;
@@ -13,12 +13,15 @@ function hitLine(hit) {
   return h('div', { class: 'row-hit muted small' }, `${hit.label}: `, hit.parts.map((p) => (p.mark ? h('mark', {}, p.text) : p.text)));
 }
 
-function pendingItem(item, now, hit) {
+// 개념 이름 안의 검색어를 mark 로 감싼 노드들.
+const conceptNodes = (text, terms) => markParts(text, terms).map((p) => (p.mark ? h('mark', {}, p.text) : p.text));
+
+function pendingItem(item, now, hit, terms) {
   const isDue = item.due <= now;
   return h(
     'li',
     { class: isDue ? 'due' : '' },
-    h('strong', {}, item.concept),
+    h('strong', {}, ...conceptNodes(item.concept, terms)),
     h('span', { class: 'muted' }, ` · ${item.topic.path.join(' › ')}`),
     h('div', { class: 'muted small' }, `${isDue ? '지금' : `다음 추천 ${formatDate(item.due)}`} · ${item.step + 1}단계`),
     h(
@@ -31,12 +34,12 @@ function pendingItem(item, now, hit) {
   );
 }
 
-function offItem(item, hit) {
+function offItem(item, hit, terms) {
   const reason = item.step >= STEPS && !item.removedAt ? `${STEPS}단계 완료` : '직접 뺌';
   return h(
     'li',
     {},
-    h('strong', {}, item.concept),
+    h('strong', {}, ...conceptNodes(item.concept, terms)),
     h('span', { class: 'muted' }, ` · ${item.topic.path.join(' › ')}`),
     h('div', { class: 'muted small' }, reason),
     hitLine(hit),
@@ -44,7 +47,7 @@ function offItem(item, hit) {
   );
 }
 
-const itemCat = (item) => item.topic.path[0] ?? '기타';
+const itemCat = (item) => pathText(item.topic.path);
 const itemFields = (item) => [
   { label: '개념', text: item.concept, title: true },
   { label: '분야', text: item.topic.path.join(' › ') },
@@ -55,7 +58,7 @@ function searchAndCat(items, f) {
   const terms = splitTerms(f.q);
   const out = [];
   for (const item of items) {
-    if (f.cat !== '' && itemCat(item) !== f.cat) continue;
+    if (!inCategory(item.topic.path, f.cat)) continue;
     const found = searchFields(itemFields(item), terms);
     if (found.matched) out.push({ item, hit: found.hit });
   }
@@ -73,7 +76,7 @@ const countText = (base, total, matched, filtered) => (filtered ? `${base} · ${
 
 // 분야 (빈 값이면 전체) 의 추천 복습 개념.
 function reviewStartItems(cat) {
-  return dueItems().filter((item) => cat === '' || itemCat(item) === cat);
+  return dueItems().filter((item) => inCategory(item.topic.path, cat));
 }
 
 export function renderReviewView() {
@@ -91,9 +94,10 @@ export function renderReviewView() {
 
   // 분야 필터가 걸리면 「차례로 풀기」 는 그 분야의 추천 개념만 다룬다.
   $('#r-start').hidden = reviewStartItems(f.cat).length === 0;
-  $('#r-start').textContent = f.cat ? `${f.cat} 추천 복습 차례로 풀기` : '추천 복습 차례로 풀기';
+  $('#r-start').textContent = f.cat ? `${lastNode(f.cat)} 추천 복습 차례로 풀기` : '추천 복습 차례로 풀기';
 
-  filterBar.setCategories([...new Set([...pending, ...off].map(itemCat))].sort(compareText));
+  filterBar.setCategories(categoryOptions([...pending, ...off].map((i) => i.topic.path)));
+  const terms = splitTerms(f.q);
   $('#r-filter').hidden = pending.length === 0 && off.length === 0;
 
   const pendingRows = sortPending(
@@ -102,12 +106,12 @@ export function renderReviewView() {
   );
   $('#r-count').textContent = countText('복습할 개념', pending.length, pendingRows.length, filtered);
   $('#r-count').hidden = pending.length === 0;
-  $('#r-list').replaceChildren(...pendingRows.map((x) => pendingItem(x.item, now, x.hit)));
+  $('#r-list').replaceChildren(...pendingRows.map((x) => pendingItem(x.item, now, x.hit, terms)));
 
   const offRows = searchAndCat(off, f);
   $('#r-off-card').hidden = off.length === 0;
   $('#r-off-count').textContent = filtered ? `${off.length}개 중 ${offRows.length}개` : `${off.length}개`;
-  $('#r-off').replaceChildren(...offRows.map((x) => offItem(x.item, x.hit)));
+  $('#r-off').replaceChildren(...offRows.map((x) => offItem(x.item, x.hit, terms)));
   return due.length;
 }
 
