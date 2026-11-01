@@ -30,6 +30,25 @@ function textMessages(history, context) {
 let chat = null;
 let onQuizCallback = () => {};
 
+// 고른 분야의 세부 분야를 #a-sub 에 채운다 (풀기 화면 #q-sub 와 같은 목록). 분야가 비면 칸을 숨긴다.
+// selected 가 목록에 없으면 (내 주제 등) 선택지에 남겨 값을 유지한다.
+function fillSub(selected = '') {
+  const category = $('#a-category').value;
+  const children = TOPICS.find((t) => t.label === category)?.children ?? [];
+  const options = [{ value: '', label: '전체' }, ...children.map((c) => ({ value: c, label: c }))];
+  if (selected && !children.includes(selected)) options.push({ value: selected, label: selected });
+  fillSelect($('#a-sub'), options, selected);
+  $('#a-sub-field').hidden = !category;
+}
+
+// 고른 분야와 주제로 대화의 category 와 topic 을 정한다. 자유 질문이면 topic 을 두지 않는다.
+function applyChoice(target) {
+  const category = $('#a-category').value;
+  target.category = category;
+  if (category) target.topic = { path: [category, $('#a-sub').value].filter(Boolean), detail: target.topic?.detail ?? target.title };
+  else delete target.topic;
+}
+
 function renderChrome() {
   const hasAnswer = chat?.history.length > 0;
   $('#a-empty').hidden = !!chat;
@@ -50,14 +69,15 @@ async function send(event) {
   const input = $('#a-input');
   const text = input.value.trim();
   if (!text) return;
+  const fresh = !chat;
   chat ??= {
     id: newId(),
     at: Date.now(),
     title: text.slice(0, 60),
-    category: $('#a-category').value,
     history: [],
     messages: [],
   };
+  if (fresh) applyChoice(chat);
   const webSearch = $('#a-web').checked;
   // 검색을 끈 채로 보내면 도구 정의가 없어 이전 검색 블록이 거절되므로, 저장된 글로 대화를 다시 만든다.
   if (!webSearch && hasSearchBlocks(chat.messages)) chat.messages = textMessages(chat.history, chat.context);
@@ -113,6 +133,7 @@ export function resumeChat(saved) {
     messages: textMessages(saved.history, saved.context),
   };
   $('#a-category').value = saved.category ?? '';
+  fillSub(saved.topic?.path?.[0] === saved.category ? (saved.topic.path[1] ?? '') : '');
   $('#a-log').replaceChildren();
   if (saved.context) $('#a-log').append(contextBlock(saved));
   for (const t of saved.history) {
@@ -160,14 +181,20 @@ export function initAskView({ onQuiz }) {
     [{ value: '', label: '(정하지 않음)' }, ...TOPICS.map((t) => ({ value: t.label, label: t.label }))],
     '',
   );
-  $('#a-category').addEventListener('change', () => {
+  fillSub();
+  const choiceChanged = () => {
     if (!chat) return;
-    chat.category = $('#a-category').value;
+    applyChoice(chat);
     if (chat.history.length) {
       const { messages, ...saved } = chat;
       put('chats', saved);
     }
+  };
+  $('#a-category').addEventListener('change', () => {
+    fillSub();
+    choiceChanged();
   });
+  $('#a-sub').addEventListener('change', choiceChanged);
   $('#a-web').checked = remember('askWebSearch') === true;
   $('#a-web').addEventListener('change', () => remember('askWebSearch', $('#a-web').checked));
   $('#a-form').addEventListener('submit', send);

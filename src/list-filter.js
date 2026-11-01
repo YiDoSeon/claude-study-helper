@@ -142,6 +142,26 @@ export function categoryOptions(paths) {
   return [...set.entries()].sort((a, b) => cmp(a[1], b[1])).map(([text]) => text);
 }
 
+// 분야 선택지(categoryOptions 의 글자들)와 고른 cat 으로 두 칸의 선택지를 만든다.
+// tops: 맨 위 분야, subs: 고른 맨 위 분야 바로 아래 세부 분야 ({ value, label }, 앞에 「전체」 는 넣지 않는다).
+// 깊이 3 이상이거나 데이터에 없는 cat 도 선택지에 남겨 값을 말없이 풀지 않는다.
+export function splitCategoryOptions(names, cat) {
+  const top = cat ? cat.split(PATH_SEP)[0] : '';
+  const tops = [];
+  const subs = [];
+  for (const name of names) {
+    const [first, second] = name.split(PATH_SEP);
+    if (!tops.includes(first)) tops.push(first);
+    if (second !== undefined && first === top) {
+      const value = first + PATH_SEP + second;
+      if (!subs.some((o) => o.value === value)) subs.push({ value, label: second });
+    }
+  }
+  if (top && !tops.includes(top)) tops.push(top);
+  if (cat && cat !== top && !subs.some((o) => o.value === cat)) subs.push({ value: cat, label: lastNode(cat) });
+  return { top, tops, subs };
+}
+
 // 최신순, 오래된순, 분야순 (분야 이름 순, 같은 분야에서는 최신순). 새 배열을 준다.
 export function sortItems(items, sort, getTime, getCat) {
   const arr = [...items];
@@ -164,10 +184,12 @@ export function createFilterBar(root, { key, onChange, verdict = true, fields = 
   const state = loadState(key, sorts, defaultSort);
   const on = (name) => fields.includes(name) && (name !== 'verdict' || verdict);
   let timer = null;
+  let catNames = [];
   let catKey = null;
 
   const q = h('input', { type: 'search', name: 'q', placeholder: '검색 (띄어쓰기로 여러 단어)', 'aria-label': '검색', autocomplete: 'off' });
   const cat = h('select', { name: 'cat' }, h('option', { value: '' }, '전체'));
+  const subCat = h('select', { name: 'sub' });
   const period = h('select', { name: 'period' }, ...optionList(PERIODS));
   const from = h('input', { type: 'date', name: 'from', 'aria-label': '시작일' });
   const to = h('input', { type: 'date', name: 'to', 'aria-label': '종료일' });
@@ -181,12 +203,15 @@ export function createFilterBar(root, { key, onChange, verdict = true, fields = 
 
   const field = (text, control) => h('label', { class: 'filter-field' }, text, control);
   const check = (text, control) => h('label', { class: 'filter-check' }, control, text);
+  const subField = field('세부 분야', subCat);
+  subField.hidden = true;
   root.replaceChildren(
     h('label', { class: 'filter-search' }, '검색', q),
     h(
       'div',
       { class: 'filter-grid' },
       on('cat') ? field('분야', cat) : '',
+      on('cat') ? subField : '',
       on('period') ? field('기간', period) : '',
       on('status') ? field('상태', statusSel) : '',
       on('verdict') ? field('결과 (푼 문제만)', verdictSel) : '',
@@ -208,7 +233,21 @@ export function createFilterBar(root, { key, onChange, verdict = true, fields = 
     noted.checked = state.noted;
     dates.hidden = state.period !== 'custom';
     clear.hidden = !isFiltered(state);
-    cat.value = state.cat;
+    renderCats();
+  }
+
+  // 분야 칸과 세부 분야 칸의 선택지를 state.cat 에 맞춰 다시 만든다.
+  function renderCats() {
+    const { top, tops, subs } = splitCategoryOptions(catNames, state.cat);
+    const nextKey = [top, tops.join('\n'), subs.map((o) => o.value).join('\n')].join('\n\n');
+    if (nextKey !== catKey) {
+      catKey = nextKey;
+      cat.replaceChildren(h('option', { value: '' }, '전체'), ...tops.map((n) => h('option', { value: n }, n)));
+      subCat.replaceChildren(h('option', { value: top }, '전체'), ...subs.map((o) => h('option', { value: o.value }, o.label)));
+    }
+    cat.value = top;
+    subCat.value = state.cat;
+    subField.hidden = !top || subs.length === 0;
   }
 
   function save() {
@@ -229,6 +268,7 @@ export function createFilterBar(root, { key, onChange, verdict = true, fields = 
     changed();
   });
   bind(cat, 'cat', (el) => el.value);
+  bind(subCat, 'cat', (el) => el.value);
   bind(period, 'period', (el) => el.value);
   bind(from, 'from', (el) => el.value);
   bind(to, 'to', (el) => el.value);
@@ -252,15 +292,10 @@ export function createFilterBar(root, { key, onChange, verdict = true, fields = 
   syncUi();
   return {
     state,
-    // 분야 선택지를 다시 만든다. 고른 값이 목록에 없어도 선택지에 남겨 값을 유지한다.
+    // 분야 선택지(경로 글자들)를 받아 두 칸을 다시 만든다. 고른 값이 목록에 없어도 선택지에 남겨 값을 유지한다.
     setCategories(names) {
-      const all = names.includes(state.cat) || state.cat === '' ? names : [...names, state.cat];
-      const next = all.join('\n');
-      if (next !== catKey) {
-        catKey = next;
-        cat.replaceChildren(h('option', { value: '' }, '전체'), ...all.map((n) => h('option', { value: n }, n)));
-      }
-      cat.value = state.cat;
+      catNames = names;
+      renderCats();
     },
     // 값 일부를 바꾸고 onChange 를 부른다.
     patch(part) {
