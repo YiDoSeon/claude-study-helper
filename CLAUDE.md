@@ -6,6 +6,7 @@
 
 - `src/` 가 원본이다. `npm run build` (`build.mjs`) 가 `dist/study.html` 과 `docs/index.html` 을 만든다.
 - GitHub Pages 는 `main` 브랜치의 `/docs` 를 내보내므로 `docs/index.html` 도 커밋한다. `dist/` 는 커밋하지 않는다.
+- `dist/visual-demo.html` 은 `demo/` 로 만드는 로컬 시연 페이지다. `docs/` 에는 만들지 않는다.
 - 화면 연결은 `main.js`, 화면 이동과 방문 기록은 `router.js`, 화면마다의 코드는 `src/views/` 에 있다.
 
 ## 코드 관례
@@ -14,6 +15,7 @@
 - 주석은 한국어로 쓰고, 파일 첫 줄에 그 파일이 맡은 주제를 적는다. 주변 코드만큼만 주석을 단다.
 - 새 기능은 새 파일에 쓴다. 기존 파일에는 그 기능을 부르는 연결만 더한다.
 - 모델이 쓴 글은 `markdown.js` 의 `renderMarkdown` 으로만 넣는다 (DOMPurify 를 거친다).
+- 모델이 만든 mermaid·html 그림은 `allow-same-origin` 없는 sandbox iframe (`visual-frame.js`) 안에서만 실행한다. 앱 출처의 `localStorage` 에 API 키가 있어서, 앱 화면에는 외부 라이브러리나 모델이 쓴 스크립트를 넣지 않는다. svg 는 DOMPurify 를 거쳐 바로 넣는다.
 - 기기마다 기억할 화면 상태 (고른 필터 등) 는 `dom.js` 의 `remember()` 에 둔다.
 
 ### 동기화되는 데이터

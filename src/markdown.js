@@ -2,6 +2,7 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { decorateCodeBlocks, decoratePre } from './code-block.js';
+import { renderVisuals } from './visuals.js';
 
 // CommonMark 규칙에서는 닫는 ** 앞이 문장 부호이고 뒤에 글자가 붙으면 굵게 처리되지 않는다
 // (`**전처리(Preprocessing)**는`). 한국어는 조사가 바로 붙으므로, 한 줄 안에서 앞뒤가
@@ -25,9 +26,11 @@ const emphasis = (name, marker, tag) => ({
 marked.setOptions({ gfm: true, breaks: true });
 marked.use({ extensions: [emphasis('looseStrong', '**', 'strong'), emphasis('looseEm', '*', 'em')] });
 
-export function renderMarkdown(el, text) {
+// visuals 가 true 면 mermaid·svg·html 코드 블록을 그림으로 바꾼다. 스트리밍 중에는 false 로 둔다.
+export function renderMarkdown(el, text, { visuals = false } = {}) {
   el.innerHTML = DOMPurify.sanitize(marked.parse(text ?? ''));
   decorateCodeBlocks(el);
+  if (visuals) renderVisuals(el);
 }
 
 export function renderCode(pre, code, language) {

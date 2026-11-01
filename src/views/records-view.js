@@ -74,9 +74,9 @@ function statsByCategory(records) {
   return [...byCat.values()].sort((a, b) => b.total - a.total);
 }
 
-function mdBlock(text) {
+function mdBlock(text, visuals = false) {
   const el = h('div', { class: 'md' });
-  renderMarkdown(el, text);
+  renderMarkdown(el, text, { visuals });
   return el;
 }
 
@@ -88,7 +88,7 @@ function reviewAction(r) {
 }
 
 function qaBlock(t) {
-  return h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a), sourcesBlock(t.sources), metaLine(t.meta));
+  return h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a, true), sourcesBlock(t.sources), metaLine(t.meta));
 }
 
 // ── 목록 ──────────────────────────────────────────────

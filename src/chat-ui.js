@@ -6,7 +6,7 @@ import { MODELS } from './api.js';
 export function appendBubble(log, role, text) {
   const body = h('div', { class: 'md' });
   if (role === 'user') body.textContent = text;
-  else renderMarkdown(body, text);
+  else renderMarkdown(body, text, { visuals: true });
   log.append(h('div', { class: `bubble ${role}` }, body));
   return body;
 }
@@ -27,7 +27,7 @@ export async function streamInto(body, run) {
       }
     });
     cancelAnimationFrame(frame);
-    renderMarkdown(body, text);
+    renderMarkdown(body, text, { visuals: true });
     return { message, text };
   } catch (err) {
     cancelAnimationFrame(frame);
