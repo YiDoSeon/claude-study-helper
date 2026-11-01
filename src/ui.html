@@ -116,6 +116,7 @@
 
   <section id="view-records" class="view" hidden>
     <div id="s-lists">
+      <div id="s-filter" class="card filter-bar"></div>
       <div class="card">
         <h3>분야별</h3>
         <p id="s-empty" class="muted">아직 푼 문제가 없어요.</p>
@@ -125,12 +126,14 @@
         </table>
       </div>
       <div class="card">
-        <h3>최근에 푼 문제</h3>
+        <h3 id="s-recent-title">최근에 푼 문제</h3>
         <ul id="s-recent" class="list"></ul>
+        <button type="button" id="s-recent-more" class="more" hidden>더 보기</button>
       </div>
       <div id="s-chats-card" class="card" hidden>
-        <h3>묻기 대화</h3>
+        <h3 id="s-chats-title">묻기 대화</h3>
         <ul id="s-chats" class="list"></ul>
+        <button type="button" id="s-chats-more" class="more" hidden>더 보기</button>
       </div>
     </div>
     <article id="s-detail" class="card" hidden>

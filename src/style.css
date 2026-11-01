@@ -258,6 +258,22 @@ label.check input { width: auto; margin: 0; }
   font-size: 0.75rem;
   color: var(--muted);
 }
+/* 필터 줄: 좁은 폭에서는 칸이 줄을 바꿔 배치된다. */
+.filter-bar label { margin-bottom: 0; min-width: 0; }
+.filter-search { margin-bottom: 8px; }
+.filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.filter-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.filter-bar input[type="date"] { min-width: 0; box-sizing: border-box; }
+.filter-bar input, .filter-bar select { box-sizing: border-box; max-width: 100%; }
+.filter-checks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.filter-check { display: flex; align-items: center; gap: 6px; }
+.filter-bar .filter-check input { display: inline-block; width: auto; margin: 0; }
+.filter-clear { margin-left: auto; }
+.row-hit { display: block; margin-top: 2px; overflow-wrap: anywhere; }
+.row-hit mark { background: var(--warn-bg); color: var(--warn); border-radius: 2px; padding: 0 1px; }
+#s-table tbody tr[data-cat] { cursor: pointer; }
+#s-table tbody tr.selected { background: var(--warn-bg); font-weight: 600; }
+button.more { display: block; width: 100%; margin-top: 8px; }
 .star-btn {
   min-height: 0;
   padding: 0 6px;
