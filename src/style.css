@@ -193,19 +193,33 @@ pre {
   border-top: 1px solid var(--border);
   border-radius: 0 0 var(--radius) var(--radius);
 }
-/* 입력 영역 접기 손잡이 (dock-toggle.js). 위쪽 경계선 오른쪽 끝에 걸쳐 dock 높이를 늘리지 않는다. 위로 16px 나오므로 질문 목록 버튼은 그만큼 더 띄운다 (.chat-nav.above-dock). */
+/* 입력 영역 접기 손잡이 (dock-toggle.js). 오른쪽 끝에서 dock 위쪽 경계선 위로 올려, 아래 모델·노력 칸을 가리지 않고 dock 높이도 늘리지 않는다.
+   dock 안으로는 6px 만 들어오고 (위 안쪽 여백 10px 안) 위로 34px 나오므로, 질문 목록 버튼은 그만큼 더 띄운다 (.chat-nav.above-toggle). */
 .dock-toggle {
   position: absolute;
-  top: 0;
+  bottom: calc(100% - 6px);
   right: 16px;
-  transform: translateY(-50%);
-  min-height: 32px;
-  padding: 0 14px;
-  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-width: 0;
+  height: 40px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
   background: var(--surface);
-  font-size: 0.85rem;
-  line-height: 1;
 }
+/* 화살표: 펼친 상태는 아래 (접기), 접힌 상태는 위 (펴기). 글자 대신 테두리로 그려 기기마다 모양이 같다. */
+.dock-toggle::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-right: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  transform: translateY(-3px) rotate(45deg);
+}
+.chat-dock.collapsed .dock-toggle::before { transform: translateY(3px) rotate(-135deg); }
 /* 접힌 상태: 손잡이만 남기고 얇은 띠로 줄인다. chat-nav.js 의 ResizeObserver 가 줄어든 높이를 다시 잰다. */
 .chat-dock.collapsed { padding-top: 6px; padding-bottom: 6px; }
 .chat-dock.collapsed > :not(.dock-toggle) { display: none; }
@@ -245,8 +259,8 @@ label.check input { width: auto; margin: 0; }
 }
 /* 입력 영역이 있는 화면에서는 입력 영역 (--dock-h, chat-nav.js 가 잰 높이) 위에 둔다. */
 .chat-nav.above-dock { bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + 12px); }
-/* 접기 손잡이가 있는 입력 영역에서는 손잡이 (위로 16px) 위에 둔다. */
-.chat-nav.above-dock.above-toggle { bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + 24px); }
+/* 접기 손잡이가 있는 입력 영역에서는 손잡이 (위로 34px) 위에 둔다. */
+.chat-nav.above-dock.above-toggle { bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + 44px); }
 .chat-nav-toggle, .detail-tool {
   min-height: 40px;
   border-radius: 999px;

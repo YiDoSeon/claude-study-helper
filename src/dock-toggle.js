@@ -8,7 +8,10 @@ let collapsed = getSetting('dockCollapsed') === '1';
 function render() {
   for (const { dock, button } of docks) {
     dock.classList.toggle('collapsed', collapsed);
-    button.textContent = collapsed ? '입력 펴기' : '입력 접기';
+    // 버튼에는 화살표만 보인다 (style.css 의 .dock-toggle::before). 이름은 aria-label 과 title 로 둔다.
+    const label = collapsed ? '입력 펴기' : '입력 접기';
+    button.setAttribute('aria-label', label);
+    button.title = label;
     button.setAttribute('aria-expanded', String(!collapsed));
   }
 }
