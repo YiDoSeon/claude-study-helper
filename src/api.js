@@ -37,6 +37,15 @@ export function currentModel() {
   return MODELS[id] ? id : 'claude-opus-5-5';
 }
 
+// 설정에서 고를 수 있는 단계. 'auto' 는 이 목록에 없고 작업별 기본값을 뜻한다.
+export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
+
+// 요청에 쓸 effort. 설정이 'auto' 거나 알 수 없는 값이면 taskDefault 를 쓴다.
+export function currentEffort(taskDefault) {
+  const value = getSetting('effort');
+  return EFFORT_LEVELS.includes(value) ? value : taskDefault;
+}
+
 // 안전 분류기가 거절하면 서버가 다른 모델로 다시 시도하게 한다. Haiku 5.5 는 지원하지 않는다.
 function fallbackParams(model) {
   return MODELS[model].fallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {};
@@ -109,7 +118,7 @@ export async function callJson({ system, user, schema, effort = 'medium', maxTok
       max_tokens: maxTokens,
       system,
       messages: [{ role: 'user', content: user }],
-      output_config: { effort, format: betaZodOutputFormat(schema) },
+      output_config: { effort: currentEffort(effort), format: betaZodOutputFormat(schema) },
       ...fallbackParams(model),
     });
   } catch (err) {
@@ -132,7 +141,8 @@ export async function streamChat({ system, messages, effort = 'medium', webSearc
   const model = currentModel();
   const tools = webSearch ? [{ type: MODELS[model].webSearch, name: 'web_search', max_uses: WEB_SEARCH_MAX_USES }] : undefined;
   const content = [];
-  const meta = { model, effort, input: 0, cacheRead: 0, cacheWrite: 0, output: 0, searches: 0, cost: 0 };
+  const requestEffort = currentEffort(effort);
+  const meta = { model, effort: requestEffort, input: 0, cacheRead: 0, cacheWrite: 0, output: 0, searches: 0, cost: 0 };
   let wroteText = false;
   let toolSinceText = false;
   for (let turn = 0; ; turn++) {
@@ -143,7 +153,7 @@ export async function streamChat({ system, messages, effort = 'medium', webSearc
       messages: content.length ? [...messages, { role: 'assistant', content }] : messages,
       tools,
       cache_control: { type: 'ephemeral' },
-      output_config: { effort },
+      output_config: { effort: requestEffort },
       ...fallbackParams(model),
     });
     // 검색 앞뒤의 글이 붙어 보이지 않게 빈 줄을 넣는다. 인용 때문에 나뉜 글 블록 사이에는 넣지 않는다.

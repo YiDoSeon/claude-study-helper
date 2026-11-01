@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { $, h, fillSelect, formatDate } from '../dom.js';
 import { getSetting, setSetting, buildSetupLink, hasGithubSync } from '../settings.js';
 import { usageSummary } from '../usage.js';
-import { MODELS, getCostTotal, resetCostTotal } from '../api.js';
+import { MODELS, EFFORT_LEVELS, getCostTotal, resetCostTotal } from '../api.js';
 import { getData, replaceWithMerged, onChange } from '../store.js';
 import { syncNow, onStatus } from '../sync.js';
 import { updateModelHint } from '../model-hint.js';
@@ -21,6 +21,7 @@ const SYNC_FIELDS = new Set(['githubRepo', 'githubToken', 'githubPath']);
 export function renderSettingsView() {
   for (const [sel, name] of FIELDS) $(sel).value = getSetting(name);
   $('#set-model').value = getSetting('model');
+  $('#set-effort').value = EFFORT_LEVELS.includes(getSetting('effort')) ? getSetting('effort') : 'auto';
   $('#set-cost').textContent = `$${getCostTotal().toFixed(3)}`;
   renderUsageLines();
 }
@@ -47,7 +48,7 @@ function showQr() {
   QRCode.toCanvas($('#set-qr-canvas'), buildSetupLink(), { width: 260, margin: 2 }, (err) => {
     $('#set-qr-note').textContent = err
       ? `QR 코드를 만들지 못했어요: ${err.message}`
-      : '폰 카메라로 찍으면 이 기기의 API 키, 모델, GitHub 설정이 그 폰에 저장돼요. 다른 사람에게 보이지 않게 하고, 다 쓰면 숨기세요.';
+      : '폰 카메라로 찍으면 이 기기의 API 키, 모델, 노력, GitHub 설정이 그 폰에 저장돼요. 다른 사람에게 보이지 않게 하고, 다 쓰면 숨기세요.';
     $('#set-qr-canvas').hidden = !!err;
     $('#set-qr').hidden = false;
   });
@@ -78,6 +79,11 @@ export function initSettingsView({ onKeyChange, onUsageChange }) {
     Object.entries(MODELS).map(([id, m]) => ({ value: id, label: `${m.label} (입력 $${m.input} / 출력 $${m.output} per 1M)` })),
     getSetting('model'),
   );
+  fillSelect(
+    $('#set-effort'),
+    [{ value: 'auto', label: '자동 (출제·답변 medium, 채점 low)' }, ...EFFORT_LEVELS.map((v) => ({ value: v, label: v }))],
+    EFFORT_LEVELS.includes(getSetting('effort')) ? getSetting('effort') : 'auto',
+  );
   for (const [sel, name] of FIELDS) {
     $(sel).addEventListener('change', () => {
       setSetting(name, $(sel).value.trim());
@@ -93,6 +99,10 @@ export function initSettingsView({ onKeyChange, onUsageChange }) {
   onChange(renderUsageLines);
   $('#set-model').addEventListener('change', () => {
     setSetting('model', $('#set-model').value);
+    updateModelHint();
+  });
+  $('#set-effort').addEventListener('change', () => {
+    setSetting('effort', $('#set-effort').value);
     updateModelHint();
   });
   $('#set-cost-reset').addEventListener('click', () => {
