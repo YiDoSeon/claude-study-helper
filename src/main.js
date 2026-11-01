@@ -69,9 +69,12 @@ function backToRecordsList() {
 function init() {
   const imported = importSetupFromHash();
 
+  // 이어서 쓰는 화면이므로 대화를 그린 뒤 문서 맨 아래로 간다. 이 위치가 이 방문 기록에 저장된다 (router.js).
+  const scrollToEnd = () => window.scrollTo(0, document.documentElement.scrollHeight);
   const continueInAsk = (record) => {
     goTo('ask');
     continueFromRecord(record);
+    scrollToEnd();
   };
   initQuizView({ onContinueInAsk: continueInAsk });
   initReviewView({
@@ -90,6 +93,7 @@ function init() {
     onResume: (chat) => {
       goTo('ask');
       resumeChat(chat);
+      scrollToEnd();
     },
     onContinue: continueInAsk,
     onOpen: (detail) => navigate({ view: 'records', detail, fromList: true }),

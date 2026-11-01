@@ -3,6 +3,7 @@ import { $, h, fillSelect, remember } from '../dom.js';
 import { appendBubble, appendSources, appendMeta, streamInto, showBubbleError } from '../chat-ui.js';
 import { renderMarkdown } from '../markdown.js';
 import { attachChatNav } from '../chat-nav.js';
+import { tapConfirm } from '../tap-confirm.js';
 import { TOPICS } from '../topics.js';
 import { askFree, chatToContext, tutorContext } from '../quiz.js';
 import { describeError } from '../api.js';
@@ -173,8 +174,8 @@ export function initAskView({ onQuiz }) {
   $('#a-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#a-form').requestSubmit();
   });
-  $('#a-new').addEventListener('click', newChat);
-  attachChatNav($('#a-log'), { questionSelector: '.bubble.user', bottom: $('#a-form') });
-  $('#a-quiz').addEventListener('click', quizFromChat);
+  tapConfirm($('#a-new'), { confirmLabel: '한 번 더 누르면 새 대화', onConfirm: newChat });
+  attachChatNav($('#a-log'), { questionSelector: '.bubble.user', bottom: $('#a-form'), dock: $('#view-ask .chat-dock') });
+  tapConfirm($('#a-quiz'), { confirmLabel: '한 번 더 누르면 문제 풀기', onConfirm: quizFromChat });
   renderChrome();
 }

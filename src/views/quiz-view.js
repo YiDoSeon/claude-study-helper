@@ -359,5 +359,5 @@ export function initQuizView({ onContinueInAsk }) {
   $('#tutor-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#tutor-form').requestSubmit();
   });
-  attachChatNav($('#tutor-log'), { questionSelector: '.bubble.user', bottom: $('#tutor-form') });
+  attachChatNav($('#tutor-log'), { questionSelector: '.bubble.user', bottom: $('#tutor-form'), dock: $('#tutor .chat-dock') });
 }

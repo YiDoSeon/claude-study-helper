@@ -19,7 +19,8 @@ function scrollToEdge(el, edge) {
 
 // container 안에서 questionSelector 에 맞는 요소를 질문으로 보고 목록을 만든다.
 // bottom 은 「맨 아래」 로 갈 요소다 (보통 입력 칸). 없으면 container 의 끝으로 간다.
-export function attachChatNav(container, { questionSelector, bottom = container }) {
+// dock 은 화면 아래에 고정된 입력 영역이다. 있으면 버튼을 그 위로 올리고, 「맨 아래」 는 문서 끝으로 간다.
+export function attachChatNav(container, { questionSelector, bottom = container, dock = null }) {
   const list = h('ol', { class: 'chat-nav-list' });
   const panel = h(
     'div',
@@ -34,8 +35,14 @@ export function attachChatNav(container, { questionSelector, bottom = container 
     ),
   );
   const toggle = h('button', { type: 'button', class: 'chat-nav-toggle', hidden: true, onclick: togglePanel }, '질문 목록');
-  const nav = h('div', { class: 'chat-nav' }, panel, toggle);
+  const nav = h('div', { class: dock ? 'chat-nav above-dock' : 'chat-nav' }, panel, toggle);
   container.after(nav);
+  if (dock) {
+    const syncDockHeight = () => nav.style.setProperty('--dock-h', `${dock.offsetHeight}px`);
+    syncDockHeight();
+    // jsdom 같은 환경에는 ResizeObserver 가 없다. 없으면 처음 잰 높이를 쓴다.
+    if (typeof ResizeObserver === 'function') new ResizeObserver(syncDockHeight).observe(dock);
+  }
 
   function questions() {
     return [...container.querySelectorAll(questionSelector)];
@@ -44,6 +51,12 @@ export function attachChatNav(container, { questionSelector, bottom = container 
   function go(el, edge) {
     panel.hidden = true;
     pushPosition();
+    // 고정된 입력 영역은 늘 화면 안에 있어 위치로 계산할 수 없으므로 문서 끝으로 간다.
+    if (dock && el === bottom) {
+      const top = document.documentElement.scrollHeight - window.innerHeight;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      return;
+    }
     scrollToEdge(el, edge);
   }
 

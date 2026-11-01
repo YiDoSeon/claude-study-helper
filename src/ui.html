@@ -72,13 +72,15 @@
     <article id="tutor" class="card" hidden>
       <h3>이 문제에 대해 묻기</h3>
       <div id="tutor-log" class="chat-log"></div>
-      <form id="tutor-form" class="chat-form">
-        <textarea id="tutor-input" rows="3" placeholder="궁금한 점을 적어 주세요 (Ctrl+Enter 로 보내기)"></textarea>
-        <button type="submit" class="primary">보내기</button>
-      </form>
-      <div class="actions">
-        <button type="button" id="tutor-to-ask">묻기 탭에서 이어 가기</button>
-        <span class="muted small">다음 문제로 넘어가도 기록에 남아 나중에 이어 물을 수 있어요.</span>
+      <div class="chat-dock">
+        <form id="tutor-form" class="chat-form">
+          <textarea id="tutor-input" rows="2" placeholder="궁금한 점을 적어 주세요 (Ctrl+Enter 로 보내기)"></textarea>
+          <button type="submit" class="primary">보내기</button>
+        </form>
+        <div class="actions">
+          <button type="button" id="tutor-to-ask">묻기 탭에서 이어 가기</button>
+          <span class="muted small dock-note">다음 문제로 넘어가도 기록에 남아 나중에 이어 물을 수 있어요.</span>
+        </div>
       </div>
     </article>
   </section>
@@ -90,14 +92,16 @@
       </div>
       <p id="a-empty" class="muted small">궁금한 것을 바로 물어보세요. 대화가 끝나면 그 내용으로 문제를 풀어 볼 수 있어요.</p>
       <div id="a-log" class="chat-log"></div>
-      <form id="a-form" class="chat-form">
-        <textarea id="a-input" rows="3" placeholder="예: TCP 3-way handshake 가 왜 3번이어야 해? (Ctrl+Enter 로 보내기)"></textarea>
-        <label class="check"><input type="checkbox" id="a-web"> 웹 검색 <span class="muted small">(검색 1회 약 $0.01, 결과 글은 입력 토큰으로 계산)</span></label>
-        <button type="submit" class="primary">보내기</button>
-      </form>
-      <div class="actions">
-        <button type="button" id="a-quiz" class="primary" hidden>이 내용으로 문제 풀기</button>
-        <button type="button" id="a-new" hidden>새 대화</button>
+      <div class="chat-dock">
+        <form id="a-form" class="chat-form">
+          <textarea id="a-input" rows="2" placeholder="예: TCP 3-way handshake 가 왜 3번이어야 해? (Ctrl+Enter 로 보내기)"></textarea>
+          <label class="check"><input type="checkbox" id="a-web"> 웹 검색 <span class="muted small dock-note">(검색 1회 약 $0.01, 결과 글은 입력 토큰으로 계산)</span></label>
+          <button type="submit" class="primary">보내기</button>
+        </form>
+        <div class="actions">
+          <button type="button" id="a-quiz" class="primary" hidden>이 내용으로 문제 풀기</button>
+          <button type="button" id="a-new" hidden>새 대화</button>
+        </div>
       </div>
     </div>
   </section>

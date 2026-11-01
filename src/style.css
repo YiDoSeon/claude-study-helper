@@ -182,6 +182,27 @@ pre {
 .bubble.assistant { border: 1px solid var(--border); }
 .bubble.error { color: var(--bad); border-color: var(--bad); }
 .chat-form { display: grid; gap: 8px; }
+/* 입력 영역: 하단 탭 (.tabs, 높이 56px + 위 경계선 1px + 안전 영역) 바로 위에 붙는다. 카드 안쪽 여백까지 펴서 대화가 비치지 않게 한다. */
+.chat-dock {
+  position: sticky;
+  bottom: calc(57px + env(safe-area-inset-bottom));
+  z-index: 1;
+  margin: 12px -16px -16px;
+  padding: 10px 16px 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+/* 웹 검색 줄과 보내기 단추를 한 줄에, 단추 줄도 한 줄에 둔다. */
+.chat-dock .chat-form { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; }
+.chat-dock .chat-form textarea { grid-column: 1 / -1; margin-top: 0; }
+.chat-dock .chat-form button { min-height: 40px; }
+.chat-dock .actions { flex-wrap: nowrap; margin-top: 6px; }
+.chat-dock .actions button { min-height: 40px; padding: 4px 12px; min-width: 0; font-size: 0.9rem; }
+button.confirming { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+@media (max-width: 560px) {
+  .chat-dock .dock-note { display: none; }
+}
 .chat-context { padding: 10px 12px; border: 1px dashed var(--border); border-radius: 10px; font-size: 0.9rem; }
 label.check { display: flex; align-items: center; gap: 8px; margin: 0; }
 label.check input { width: auto; margin: 0; }
@@ -201,6 +222,8 @@ label.check input { width: auto; margin: 0; }
   align-items: flex-end;
   gap: 8px;
 }
+/* 입력 영역이 있는 화면에서는 입력 영역 (--dock-h, chat-nav.js 가 잰 높이) 위에 둔다. */
+.chat-nav.above-dock { bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + 12px); }
 .chat-nav-toggle {
   min-height: 40px;
   border-radius: 999px;
