@@ -7,6 +7,7 @@ import { appendPairActions, attachExport } from '../qa-export.js';
 import { TOPICS, DIFFICULTIES, QUESTION_TYPES, CUSTOM_CATEGORY_ID, CUSTOM_CATEGORY_LABEL } from '../topics.js';
 import { generateQuestion, gradeChoice, gradeAnswer, tutorContext, askTutor } from '../quiz.js';
 import { describeError } from '../api.js';
+import { createChoicePicker, resolveChoice } from '../chat-choice.js';
 import { getSetting } from '../settings.js';
 import { put, get, list, newId } from '../store.js';
 import { inCategories, lastNode } from '../list-filter.js';
@@ -17,6 +18,7 @@ const ADD_TOPIC = '__add__';
 
 let current = null; // { topic, difficulty, type, question, review, context, record, chosen, tutor }
 let requestSeq = 0;
+let tutorPicker = null; // 더 물어보기 입력 영역의 모델·노력 칸
 // 분야만 차례로 풀기의 범위 (분야 이름). 전체 추천 개념을 잇는 중이면 null.
 let reviewCategories = null; // 「다음」 이 낼 추천 복습의 분야들 (경로 글자 배열). null 이면 범위가 없다.
 
@@ -266,7 +268,11 @@ export function startFromChat({ topic, context }) {
 // ── 튜터 ──────────────────────────────────────────────
 
 function openTutor() {
-  current.tutor ??= { messages: [] };
+  if (!current.tutor) {
+    current.tutor = { messages: [] };
+    // 이 문제에서 마지막으로 고른 값, 없으면 마지막 답의 meta, 그래도 없으면 설정 기본값으로 칸을 맞춘다.
+    tutorPicker.set(resolveChoice(current.record?.tutorChoice, current.record?.tutor));
+  }
   $('#tutor').hidden = false;
   $('#tutor-input').focus();
   $('#tutor').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -281,6 +287,7 @@ async function sendTutor(event) {
   const text = input.value.trim();
   if (!text || !current?.record) return;
   const tutor = current.tutor;
+  const choice = tutorPicker.get();
   const content = tutor.messages.length === 0 ? `${tutorContext(current.record)}\n\n## 질문\n${text}` : text;
   tutor.messages.push({ role: 'user', content });
   input.value = '';
@@ -291,7 +298,7 @@ async function sendTutor(event) {
 
   try {
     const { message, text: answer } = await streamInto(body, (onText) =>
-      askTutor({ messages: tutor.messages, onText }),
+      askTutor({ messages: tutor.messages, choice, onText }),
     );
     // thinking 블록까지 포함한 content 전체를 그대로 이어 붙인다.
     tutor.messages.push({ role: 'assistant', content: message.content });
@@ -299,6 +306,7 @@ async function sendTutor(event) {
     // 기록에는 화면에 보인 질문과 답 글, 사용량만 남긴다.
     current.record = put('records', {
       ...current.record,
+      tutorChoice: choice,
       tutor: [...(current.record.tutor ?? []), { q: text, a: answer, at: Date.now(), meta: message.meta }],
     });
     appendPairActions(body, { title: tutorTitle(current.record) }, { q: text, a: answer });
@@ -356,6 +364,7 @@ export function initQuizView({ onContinueInAsk }) {
     setStatus('');
     showPanels({ setup: true, card: false, result: false, tutor: false });
   });
+  tutorPicker = createChoicePicker($('#tutor-choice')); // 칸만 바꿀 때는 기록을 저장하지 않는다 (보낼 때 함께 저장).
   $('#q-ask').addEventListener('click', openTutor);
   $('#tutor-form').addEventListener('submit', sendTutor);
   $('#tutor-to-ask').addEventListener('click', () => {

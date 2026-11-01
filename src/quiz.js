@@ -173,12 +173,12 @@ export function tutorContext(record) {
     .join('\n');
 }
 
-export function askTutor({ messages, onText }) {
-  return streamChat({ system: TUTOR_SYSTEM, messages, effort: 'medium', onText });
+export function askTutor({ messages, choice, onText }) {
+  return streamChat({ system: TUTOR_SYSTEM, messages, effort: 'medium', choice, onText });
 }
 
-export function askFree({ messages, webSearch, onText }) {
-  return streamChat({ system: FREE_TUTOR_SYSTEM, messages, effort: 'medium', webSearch, onText });
+export function askFree({ messages, webSearch, choice, onText }) {
+  return streamChat({ system: FREE_TUTOR_SYSTEM, messages, effort: 'medium', webSearch, choice, onText });
 }
 
 // 「묻기」 대화를 출제용 맥락 글로 바꾼다. 길면 최근 대화를 남긴다.

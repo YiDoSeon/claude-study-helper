@@ -7,6 +7,8 @@ import { tapConfirm } from '../tap-confirm.js';
 import { TOPICS } from '../topics.js';
 import { askFree, chatToContext, tutorContext } from '../quiz.js';
 import { describeError } from '../api.js';
+import { createChoicePicker, defaultChoice, resolveChoice } from '../chat-choice.js';
+import { onModelHintUpdate } from '../model-hint.js';
 import { collectSources, hasSearchBlocks } from '../web-search.js';
 import { put, list, newId } from '../store.js';
 
@@ -26,9 +28,12 @@ function textMessages(history, context) {
 }
 
 // { id, at, title, category, history: [{ q, a, at, meta, sources? }], messages: API 에 보낼 대화,
+//   choice: 마지막으로 고른 { model, effort },
 //   푼 문제에서 넘어왔으면 recordId, topic, context: 문제·내 답·채점 결과 글 }
 let chat = null;
 let onQuizCallback = () => {};
+let picker = null; // 입력 영역의 모델·노력 칸
+let idleTouched = false; // 대화가 없을 때 사용자가 칸을 바꿨는지. 바꿨으면 설정이 바뀌어도 덮어쓰지 않는다.
 
 // 고른 분야의 세부 분야를 #a-sub 에 채운다 (풀기 화면 #q-sub 와 같은 목록). 분야가 비면 칸을 숨긴다.
 // selected 가 목록에 없으면 (내 주제 등) 선택지에 남겨 값을 유지한다.
@@ -58,6 +63,8 @@ function renderChrome() {
 
 function newChat() {
   chat = null;
+  idleTouched = false;
+  picker.set(defaultChoice());
   $('#a-log').replaceChildren();
   $('#a-input').value = '';
   renderChrome();
@@ -68,6 +75,8 @@ function newChat() {
 export function closeChatIfOpen(id) {
   if (chat?.id !== id) return;
   chat = null;
+  idleTouched = false;
+  picker.set(defaultChoice());
   $('#a-log').replaceChildren();
   $('#a-input').value = '';
   renderChrome();
@@ -88,8 +97,12 @@ async function send(event) {
   };
   if (fresh) applyChoice(chat);
   const webSearch = $('#a-web').checked;
-  // 검색을 끈 채로 보내면 도구 정의가 없어 이전 검색 블록이 거절되므로, 저장된 글로 대화를 다시 만든다.
-  if (!webSearch && hasSearchBlocks(chat.messages)) chat.messages = textMessages(chat.history, chat.context);
+  const choice = picker.get();
+  // 직전 답을 한 모델과 달라졌는지. 웹 검색 도구 버전이 모델마다 달라 이전 검색 블록이 거절될 수 있다.
+  const prevModel = chat.history.at(-1)?.meta?.model ?? chat.choice?.model;
+  const modelChanged = !!prevModel && prevModel !== choice.model;
+  // 검색을 끈 채로 보내거나 모델이 바뀌면 도구 정의가 달라 이전 검색 블록이 거절되므로, 저장된 글로 대화를 다시 만든다.
+  if ((!webSearch || modelChanged) && hasSearchBlocks(chat.messages)) chat.messages = textMessages(chat.history, chat.context);
   chat.messages.push({ role: 'user', content: chat.messages.length ? text : withContext(chat.context, text) });
   input.value = '';
   renderChrome();
@@ -100,7 +113,7 @@ async function send(event) {
 
   try {
     const { message, text: answer } = await streamInto(body, (onText) =>
-      askFree({ messages: chat.messages, webSearch, onText }),
+      askFree({ messages: chat.messages, webSearch, choice, onText }),
     );
     // thinking 블록과 검색 블록까지 포함한 content 전체를 그대로 이어 붙인다.
     chat.messages.push({ role: 'assistant', content: message.content });
@@ -109,6 +122,7 @@ async function send(event) {
     appendMeta(body, message.meta);
     const pair = { q: text, a: answer, at: Date.now(), meta: message.meta, ...(sources.length && { sources }) };
     chat.history.push(pair);
+    chat.choice = choice;
     const { messages, ...saved } = chat;
     put('chats', saved);
     appendPairActions(body, { title: chat.title, context: chat.context }, pair);
@@ -136,6 +150,7 @@ export function resumeChat(saved) {
     history: [...saved.history],
     messages: textMessages(saved.history, saved.context),
   };
+  picker.set(resolveChoice(saved.choice, saved.history));
   $('#a-category').value = saved.category ?? '';
   fillSub(saved.topic?.path?.[0] === saved.category ? (saved.topic.path[1] ?? '') : '');
   $('#a-log').replaceChildren();
@@ -172,6 +187,7 @@ export function continueFromRecord(record) {
     recordId: record.id,
     context: tutorContext(record),
     history: tutor,
+    choice: resolveChoice(record.tutorChoice, tutor),
   };
   // 주고받은 질문이 없으면 첫 답을 받을 때 저장한다.
   if (saved.history.length) put('chats', saved);
@@ -187,6 +203,22 @@ export function initAskView({ onQuiz }) {
     '',
   );
   fillSub();
+  picker = createChoicePicker($('#a-choice'), (choice) => {
+    if (!chat) {
+      idleTouched = true;
+      return;
+    }
+    chat.choice = choice;
+    if (chat.history.length) {
+      const { messages, ...saved } = chat;
+      put('chats', saved);
+    }
+  });
+  picker.set(defaultChoice());
+  // 설정에서 모델이나 노력을 바꾸면 아직 시작하지 않은 대화의 칸도 새 기본값을 따른다.
+  onModelHintUpdate(() => {
+    if (!chat && !idleTouched) picker.set(defaultChoice());
+  });
   const choiceChanged = () => {
     if (!chat) return;
     applyChoice(chat);

@@ -46,13 +46,23 @@ export function currentEffort(taskDefault) {
   return EFFORT_LEVELS.includes(value) ? value : taskDefault;
 }
 
+// 요청에 쓸 모델과 effort. choice ({ model, effort }) 가 있으면 대화에서 고른 값을 쓰고,
+// 없으면 설정을 쓴다. choice 의 effort 가 'auto' 거나 알 수 없는 값이면 taskDefault 다 (설정 노력이 아니다).
+function requestParams(choice, taskDefault) {
+  if (!choice) return { model: currentModel(), effort: currentEffort(taskDefault) };
+  return {
+    model: MODELS[choice.model] ? choice.model : currentModel(),
+    effort: EFFORT_LEVELS.includes(choice.effort) ? choice.effort : taskDefault,
+  };
+}
+
 // 안전 분류기가 거절하면 서버가 다른 모델로 다시 시도하게 한다. Haiku 5.5 는 지원하지 않는다.
 function fallbackParams(model) {
   return MODELS[model].fallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {};
 }
 
-function trackCost(message) {
-  const price = MODELS[message.model] ?? MODELS[currentModel()];
+function trackCost(message, requestedModel = currentModel()) {
+  const price = MODELS[message.model] ?? MODELS[requestedModel];
   const u = message.usage;
   const cost =
     ((u.input_tokens ?? 0) * price.input +
@@ -108,8 +118,8 @@ export function describeError(err) {
 }
 
 // 구조화된 JSON 응답 하나를 받는다. schema 는 zod 객체.
-export async function callJson({ system, user, schema, effort = 'medium', maxTokens = 16000 }) {
-  const model = currentModel();
+export async function callJson({ system, user, schema, effort = 'medium', maxTokens = 16000, choice }) {
+  const { model, effort: requestEffort } = requestParams(choice, effort);
   const api = client();
   let message;
   try {
@@ -118,7 +128,7 @@ export async function callJson({ system, user, schema, effort = 'medium', maxTok
       max_tokens: maxTokens,
       system,
       messages: [{ role: 'user', content: user }],
-      output_config: { effort: currentEffort(effort), format: betaZodOutputFormat(schema) },
+      output_config: { effort: requestEffort, format: betaZodOutputFormat(schema) },
       ...fallbackParams(model),
     });
   } catch (err) {
@@ -126,7 +136,7 @@ export async function callJson({ system, user, schema, effort = 'medium', maxTok
     if (err instanceof Anthropic.APIError) throw err;
     throw new FormatError(err?.message);
   }
-  trackCost(message);
+  trackCost(message, model);
   if (message.stop_reason === 'refusal') throw new RefusalError();
   if (!message.parsed_output) throw new FormatError();
   return message.parsed_output;
@@ -134,14 +144,14 @@ export async function callJson({ system, user, schema, effort = 'medium', maxTok
 
 // 대화형 응답을 스트리밍으로 받는다. messages 는 대화 전체이고,
 // 돌려받은 content 를 그대로 다음 요청에 붙여야 thinking 블록이 유지된다.
+// choice ({ model, effort }) 가 있으면 그 모델과 노력으로 요청한다.
 // webSearch 가 true 면 서버 웹 검색 도구를 넣는다. 검색이 길어 pause_turn 으로 멈추면
 // 받은 content 를 assistant 차례로 붙여 다시 보내고, 이어 받은 content 를 하나로 합쳐 돌려준다.
 // 돌려주는 message 의 meta 는 addUsage 가 모은 사용량이다.
-export async function streamChat({ system, messages, effort = 'medium', webSearch = false, onText }) {
-  const model = currentModel();
+export async function streamChat({ system, messages, effort = 'medium', webSearch = false, choice, onText }) {
+  const { model, effort: requestEffort } = requestParams(choice, effort);
   const tools = webSearch ? [{ type: MODELS[model].webSearch, name: 'web_search', max_uses: WEB_SEARCH_MAX_USES }] : undefined;
   const content = [];
-  const requestEffort = currentEffort(effort);
   const meta = { model, effort: requestEffort, input: 0, cacheRead: 0, cacheWrite: 0, output: 0, searches: 0, cost: 0 };
   let wroteText = false;
   let toolSinceText = false;
@@ -169,7 +179,7 @@ export async function streamChat({ system, messages, effort = 'medium', webSearc
       onText(delta);
     });
     const message = await stream.finalMessage();
-    addUsage(meta, message, trackCost(message));
+    addUsage(meta, message, trackCost(message, model));
     if (message.stop_reason === 'refusal') throw new RefusalError();
     content.push(...message.content);
     if (message.stop_reason !== 'pause_turn' || turn >= MAX_CONTINUATIONS) return { ...message, content, meta };

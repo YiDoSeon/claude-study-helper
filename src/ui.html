@@ -75,7 +75,7 @@
       <h3>이 문제에 대해 묻기</h3>
       <div id="tutor-log" class="chat-log"></div>
       <div class="chat-dock">
-        <p class="muted small model-hint"></p>
+        <div id="tutor-choice" class="chat-choice"></div>
         <form id="tutor-form" class="chat-form">
           <textarea id="tutor-input" rows="2" placeholder="궁금한 점을 적어 주세요 (Ctrl+Enter 로 보내기)"></textarea>
           <button type="submit" class="primary">보내기</button>
@@ -97,7 +97,7 @@
       <p id="a-empty" class="muted small">궁금한 것을 바로 물어보세요. 대화가 끝나면 그 내용으로 문제를 풀어 볼 수 있어요.</p>
       <div id="a-log" class="chat-log"></div>
       <div class="chat-dock">
-        <p class="muted small model-hint"></p>
+        <div id="a-choice" class="chat-choice"></div>
         <form id="a-form" class="chat-form">
           <textarea id="a-input" rows="2" placeholder="예: TCP 3-way handshake 가 왜 3번이어야 해? (Ctrl+Enter 로 보내기)"></textarea>
           <label class="check"><input type="checkbox" id="a-web"> 웹 검색 <span class="muted small dock-note">(검색 1회 약 $0.01, 결과 글은 입력 토큰으로 계산)</span></label>
@@ -160,7 +160,7 @@
       <label>API 키 <input type="password" id="set-key" autocomplete="off" placeholder="sk-ant-…"></label>
       <label>모델 <select id="set-model"></select></label>
       <label>노력 <select id="set-effort"></select></label>
-      <p class="muted small">높을수록 더 깊이 생각하는 대신 출력 토큰과 비용이 늘어요. 모델과 노력은 이 기기에만 저장돼요. 다른 기기는 그 기기에서 바꾸거나 QR 코드로 옮기세요.</p>
+      <p class="muted small">높을수록 더 깊이 생각하는 대신 출력 토큰과 비용이 늘어요. 여기의 모델과 노력은 새 대화의 기본값이고 문제 출제와 채점에 쓰여요. 「묻기」 와 「더 물어보기」 는 입력 영역에서 대화마다 바꿀 수 있어요. 모델과 노력은 이 기기에만 저장돼요. 다른 기기는 그 기기에서 바꾸거나 QR 코드로 옮기세요.</p>
       <p class="muted small">이 기기에서 쓴 금액 (추정): <span id="set-cost"></span>
         <button type="button" id="set-cost-reset" class="link">초기화</button></p>
     </div>
