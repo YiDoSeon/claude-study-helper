@@ -1,7 +1,7 @@
 // 「기록」 화면: 분야별 정답률, 최근에 푼 문제, 「묻기」 대화. 항목을 누르면 목록 대신 상세 화면을 보여 준다.
 import { $, h, formatDate } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
-import { sourcesBlock, metaLine } from '../chat-ui.js';
+import { sourcesBlock, metaLine, chatContextBlock } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
 import { decoratePre } from '../code-block.js';
 import { list } from '../store.js';
@@ -109,6 +109,13 @@ function hitLine(hit) {
 }
 
 // 제목 글 안의 검색어를 mark 로 감싼 노드들.
+// 대화 제목은 첫 질문의 앞 60자다 (ask-view.js). 잘렸으면 … 를 붙여 뒤가 더 있음을 보인다.
+// 첫 질문 전체는 상세 화면의 첫 질문 줄에 있다.
+function chatTitle(c) {
+  const first = c.history[0]?.q ?? '';
+  return first.length > c.title.length && first.startsWith(c.title) ? `${c.title}…` : c.title;
+}
+
 function titleNodes(text, terms) {
   return markParts(text, terms).map((p) => (p.mark ? h('mark', {}, p.text) : p.text));
 }
@@ -139,7 +146,7 @@ function chatRow(c, hit, terms) {
       'button',
       { type: 'button', class: 'record-row', 'data-key': `chat:${c.id}`, onclick: () => onOpenDetail({ kind: 'chat', id: c.id }) },
       starMark('chat', c.id),
-      h('strong', {}, ...titleNodes(c.title, terms)),
+      h('strong', {}, ...titleNodes(chatTitle(c), terms)),
       h('span', { class: 'muted small' }, ` · ${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
       noteMark('chat', c.id),
       hitLine(hit),
@@ -303,8 +310,9 @@ function chatActions(c) {
 
 function chatDetail(c) {
   return [
-    h('h2', { class: 'detail-title' }, c.title),
+    h('h2', { class: 'detail-title' }, chatTitle(c)),
     h('p', { class: 'muted small' }, `${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
+    c.context ? chatContextBlock(c) : '',
     ...c.history.map(qaBlock),
   ];
 }

@@ -1,7 +1,6 @@
 // 「묻기」 화면: 질문으로 시작하는 튜터 대화. 푼 문제에서 넘어온 대화도 여기서 이어 간다.
 import { $, h, fillSelect, remember } from '../dom.js';
-import { appendBubble, appendSources, appendMeta, streamInto, showBubbleError } from '../chat-ui.js';
-import { renderMarkdown } from '../markdown.js';
+import { appendBubble, appendSources, appendMeta, streamInto, showBubbleError, chatContextBlock } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
 import { tapConfirm } from '../tap-confirm.js';
 import { TOPICS } from '../topics.js';
@@ -127,13 +126,6 @@ function quizFromChat() {
   });
 }
 
-// 푼 문제에서 넘어온 대화는 맨 위에 문제 맥락을 접어서 보여 준다.
-function contextBlock(saved) {
-  const body = h('div', { class: 'md' });
-  renderMarkdown(body, saved.context);
-  return h('details', { class: 'chat-context' }, h('summary', {}, `푼 문제: ${saved.title.replace(/^문제: /, '')}`), body);
-}
-
 // 기록에 저장된 대화를 이어서 묻는다. 저장된 글만으로 대화를 다시 만든다.
 export function resumeChat(saved) {
   chat = {
@@ -144,7 +136,7 @@ export function resumeChat(saved) {
   $('#a-category').value = saved.category ?? '';
   fillSub(saved.topic?.path?.[0] === saved.category ? (saved.topic.path[1] ?? '') : '');
   $('#a-log').replaceChildren();
-  if (saved.context) $('#a-log').append(contextBlock(saved));
+  if (saved.context) $('#a-log').append(chatContextBlock(saved));
   for (const t of saved.history) {
     appendBubble($('#a-log'), 'user', t.q);
     const body = appendBubble($('#a-log'), 'assistant', t.a);

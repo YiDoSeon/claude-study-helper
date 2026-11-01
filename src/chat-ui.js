@@ -3,6 +3,13 @@ import { h } from './dom.js';
 import { renderMarkdown } from './markdown.js';
 import { MODELS } from './api.js';
 
+// 푼 문제에서 넘어온 대화 (context 가 있는 대화) 의 문제 맥락을 접어서 보여 준다. 묻기 화면과 기록 상세가 같이 쓴다.
+export function chatContextBlock(saved) {
+  const body = h('div', { class: 'md' });
+  renderMarkdown(body, saved.context);
+  return h('details', { class: 'chat-context' }, h('summary', {}, `푼 문제: ${saved.title.replace(/^문제: /, '')}`), body);
+}
+
 export function appendBubble(log, role, text) {
   const body = h('div', { class: 'md' });
   if (role === 'user') body.textContent = text;
