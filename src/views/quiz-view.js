@@ -15,6 +15,8 @@ const ADD_TOPIC = '__add__';
 
 let current = null; // { topic, difficulty, type, question, review, context, record, chosen, tutor }
 let requestSeq = 0;
+// 분야만 차례로 풀기의 범위 (분야 이름). 전체 추천 개념을 잇는 중이면 null.
+let reviewCategory = null;
 
 function customTopics() {
   return list('topics')
@@ -223,13 +225,17 @@ function resetCardButtons() {
 function next() {
   resetCardButtons();
   if (current.review) {
-    const [item] = dueItems();
+    const category = reviewCategory;
+    const [item] = dueItems().filter((r) => category === null || (r.topic.path[0] ?? '기타') === category);
     if (item) {
-      startReview(item);
+      startReview(item, category === null ? undefined : { category });
     } else {
       current = null;
+      reviewCategory = null;
       showPanels({ setup: true, card: false, result: false, tutor: false });
-      setStatus('추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.');
+      setStatus(category === null
+        ? '추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.'
+        : `${category} 분야의 추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.`);
     }
     return;
   }
@@ -242,13 +248,16 @@ function next() {
   });
 }
 
-export function startReview(item) {
+// opts.category 가 있으면 「다음」 이 그 분야의 추천 개념만 낸다. 없으면 범위를 지운다.
+export function startReview(item, opts = {}) {
+  reviewCategory = opts.category ?? null;
   resetCardButtons();
   startQuestion({ topic: item.topic, difficulty: item.difficulty, type: 'auto', review: item });
 }
 
 // 「묻기」 대화에서 다룬 개념으로 문제를 낸다. 난이도와 형식은 풀기 화면에 고른 값을 쓴다.
 export function startFromChat({ topic, context }) {
+  reviewCategory = null;
   resetCardButtons();
   startQuestion({ topic, difficulty: $('#q-difficulty').value, type: $('#q-type').value, review: null, context });
 }
@@ -323,6 +332,7 @@ export function initQuizView({ onContinueInAsk }) {
       difficulty: $('#q-difficulty').value,
       type: $('#q-type').value,
     });
+    reviewCategory = null;
     resetCardButtons();
     startQuestion({ ...readSetup(), review: null });
   });

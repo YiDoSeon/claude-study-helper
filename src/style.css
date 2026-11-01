@@ -340,3 +340,6 @@ th, td { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: l
 }
 
 [hidden] { display: none !important; }
+#r-count { margin: 8px 2px; }
+#r-count[hidden] { display: none; }
+#r-filter[hidden] { display: none; }

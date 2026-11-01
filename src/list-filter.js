@@ -25,23 +25,39 @@ const SORTS = [
   { value: 'cat', label: '분야순' },
 ];
 
+// 복습 목록의 상태와 정렬.
+const STATUSES = [
+  { value: 'all', label: '전체' },
+  { value: 'due', label: '지금 추천' },
+  { value: 'later', label: '나중에' },
+];
+export const REVIEW_SORTS = [
+  { value: 'due', label: '추천일순' },
+  { value: 'step', label: '단계순' },
+  { value: 'cat', label: '분야순' },
+];
+// 화면마다 보일 칸. fields 를 주지 않으면 기록 화면의 칸이다.
+export const RECORD_FIELDS = ['q', 'cat', 'period', 'verdict', 'sort', 'starred', 'noted'];
+export const REVIEW_FIELDS = ['q', 'cat', 'status', 'sort'];
+
 export const DEFAULT_FILTER = {
-  q: '', cat: '', period: 'all', from: '', to: '', verdict: 'all', sort: 'new', starred: false, noted: false,
+  q: '', cat: '', period: 'all', from: '', to: '', verdict: 'all', status: 'all', sort: 'new', starred: false, noted: false,
 };
 
 const has = (options, value) => options.some((o) => o.value === value);
 
 // 기억해 둔 값 중 모양이 맞는 것만 쓴다.
-function loadState(key) {
+function loadState(key, sorts, defaultSort) {
   const saved = remember(key) ?? {};
-  const s = { ...DEFAULT_FILTER };
+  const s = { ...DEFAULT_FILTER, sort: defaultSort };
   if (typeof saved.q === 'string') s.q = saved.q;
   if (typeof saved.cat === 'string') s.cat = saved.cat;
   if (has(PERIODS, saved.period)) s.period = saved.period;
   if (typeof saved.from === 'string') s.from = saved.from;
   if (typeof saved.to === 'string') s.to = saved.to;
   if (has(VERDICTS, saved.verdict)) s.verdict = saved.verdict;
-  if (has(SORTS, saved.sort)) s.sort = saved.sort;
+  if (has(STATUSES, saved.status)) s.status = saved.status;
+  if (has(sorts, saved.sort)) s.sort = saved.sort;
   s.starred = saved.starred === true;
   s.noted = saved.noted === true;
   return s;
@@ -49,7 +65,7 @@ function loadState(key) {
 
 // 정렬을 뺀 필터가 하나라도 걸려 있는지.
 export function isFiltered(s) {
-  return s.q.trim() !== '' || s.cat !== '' || s.period !== 'all' || s.verdict !== 'all' || s.starred || s.noted;
+  return s.q.trim() !== '' || s.cat !== '' || s.period !== 'all' || s.verdict !== 'all' || s.status !== 'all' || s.starred || s.noted;
 }
 
 // 'YYYY-MM-DD' 를 기기 현지 날짜의 0시 (ms) 로. 모양이 틀리면 null.
@@ -103,9 +119,11 @@ function optionList(options) {
 
 // root 에 필터 줄을 한 번 만든다. 값이 바뀌면 onChange(state) 를 부른다 (검색칸은 입력하고 150ms 뒤).
 // verdict 가 false 이면 결과 칸을 만들지 않는다.
+// fields 는 보일 칸 이름 (RECORD_FIELDS, REVIEW_FIELDS). sorts 와 defaultSort 는 정렬 선택지와 기본값.
 // 돌려주는 것: state (현재 값), setCategories(names), patch(값 일부), clear()
-export function createFilterBar(root, { key, onChange, verdict = true }) {
-  const state = loadState(key);
+export function createFilterBar(root, { key, onChange, verdict = true, fields = RECORD_FIELDS, sorts = SORTS, defaultSort = 'new' }) {
+  const state = loadState(key, sorts, defaultSort);
+  const on = (name) => fields.includes(name) && (name !== 'verdict' || verdict);
   let timer = null;
   let catKey = null;
 
@@ -116,7 +134,8 @@ export function createFilterBar(root, { key, onChange, verdict = true }) {
   const to = h('input', { type: 'date', name: 'to', 'aria-label': '종료일' });
   const dates = h('div', { class: 'filter-dates' }, h('label', {}, '시작일', from), h('label', {}, '종료일', to));
   const verdictSel = h('select', { name: 'verdict' }, ...optionList(VERDICTS));
-  const sort = h('select', { name: 'sort' }, ...optionList(SORTS));
+  const sort = h('select', { name: 'sort' }, ...optionList(sorts));
+  const statusSel = h('select', { name: 'status' }, ...optionList(STATUSES));
   const starred = h('input', { type: 'checkbox', name: 'starred' });
   const noted = h('input', { type: 'checkbox', name: 'noted' });
   const clear = h('button', { type: 'button', class: 'filter-clear link' }, '필터 지우기');
@@ -128,13 +147,14 @@ export function createFilterBar(root, { key, onChange, verdict = true }) {
     h(
       'div',
       { class: 'filter-grid' },
-      field('분야', cat),
-      field('기간', period),
-      verdict ? field('결과 (푼 문제만)', verdictSel) : '',
-      field('정렬', sort),
+      on('cat') ? field('분야', cat) : '',
+      on('period') ? field('기간', period) : '',
+      on('status') ? field('상태', statusSel) : '',
+      on('verdict') ? field('결과 (푼 문제만)', verdictSel) : '',
+      on('sort') ? field('정렬', sort) : '',
     ),
-    dates,
-    h('div', { class: 'filter-checks' }, check('즐겨찾기만', starred), check('메모 있는 것만', noted), clear),
+    on('period') ? dates : '',
+    h('div', { class: 'filter-checks' }, on('starred') ? check('즐겨찾기만', starred) : '', on('noted') ? check('메모 있는 것만', noted) : '', clear),
   );
 
   function syncUi() {
@@ -143,6 +163,7 @@ export function createFilterBar(root, { key, onChange, verdict = true }) {
     from.value = state.from;
     to.value = state.to;
     verdictSel.value = state.verdict;
+    statusSel.value = state.status;
     sort.value = state.sort;
     starred.checked = state.starred;
     noted.checked = state.noted;
@@ -173,6 +194,7 @@ export function createFilterBar(root, { key, onChange, verdict = true }) {
   bind(from, 'from', (el) => el.value);
   bind(to, 'to', (el) => el.value);
   bind(verdictSel, 'verdict', (el) => el.value);
+  bind(statusSel, 'status', (el) => el.value);
   bind(sort, 'sort', (el) => el.value);
   bind(starred, 'starred', (el) => el.checked);
   bind(noted, 'noted', (el) => el.checked);

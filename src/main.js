@@ -75,9 +75,9 @@ function init() {
   };
   initQuizView({ onContinueInAsk: continueInAsk });
   initReviewView({
-    onStart: (item) => {
+    onStart: (item, opts) => {
       goTo('quiz');
-      startReview(item);
+      startReview(item, opts);
     },
   });
   initAskView({
