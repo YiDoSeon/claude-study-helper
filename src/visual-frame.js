@@ -1,5 +1,6 @@
 // 모델이 만든 mermaid·html 그림을 sandbox iframe 에 넣는다 (srcdoc, CSP, 높이·오류 메시지 받기, 시간 초과).
 // 앱 출처의 localStorage 에 API 키가 있으므로 iframe 에 allow-same-origin 을 넣지 않는다.
+import { escapeLabelLists } from './mermaid-labels.js';
 
 export const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
 export const MERMAID_CSP = "default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data:; font-src data:";
@@ -23,7 +24,7 @@ function mermaidDoc(code, dark) {
 </head><body><div id="box"></div>
 <script type="module">
 ${reportHeight}
-const code = ${jsString(code)};
+const code = ${jsString(escapeLabelLists(code))};
 const firstLine = (e) => String((e && e.message) || e).split('\\n')[0].slice(0, 200);
 let mermaid;
 try {
