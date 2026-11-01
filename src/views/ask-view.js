@@ -2,6 +2,7 @@
 import { $, h, fillSelect, remember } from '../dom.js';
 import { appendBubble, appendSources, appendMeta, streamInto, showBubbleError, chatContextBlock } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
+import { appendPairActions, attachExport } from '../qa-export.js';
 import { tapConfirm } from '../tap-confirm.js';
 import { TOPICS } from '../topics.js';
 import { askFree, chatToContext, tutorContext } from '../quiz.js';
@@ -106,9 +107,11 @@ async function send(event) {
     const sources = collectSources(message.content);
     appendSources(body, sources);
     appendMeta(body, message.meta);
-    chat.history.push({ q: text, a: answer, at: Date.now(), meta: message.meta, ...(sources.length && { sources }) });
+    const pair = { q: text, a: answer, at: Date.now(), meta: message.meta, ...(sources.length && { sources }) };
+    chat.history.push(pair);
     const { messages, ...saved } = chat;
     put('chats', saved);
+    appendPairActions(body, { title: chat.title, context: chat.context }, pair);
   } catch (err) {
     chat.messages.pop();
     showBubbleError(body, describeError(err));
@@ -142,6 +145,7 @@ export function resumeChat(saved) {
     const body = appendBubble($('#a-log'), 'assistant', t.a);
     appendSources(body, t.sources);
     appendMeta(body, t.meta);
+    appendPairActions(body, { title: saved.title, context: saved.context }, t);
   }
   renderChrome();
 }
@@ -203,7 +207,8 @@ export function initAskView({ onQuiz }) {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#a-form').requestSubmit();
   });
   tapConfirm($('#a-new'), { confirmLabel: '한 번 더 누르면 새 대화', onConfirm: newChat });
-  attachChatNav($('#a-log'), { questionSelector: '.bubble.user', bottom: $('#a-form'), dock: $('#view-ask .chat-dock') });
+  const nav = attachChatNav($('#a-log'), { questionSelector: '.bubble.user', bottom: $('#a-form'), dock: $('#view-ask .chat-dock') });
+  attachExport(nav, $('#a-log'), () => chat && { title: chat.title, context: chat.context, pairs: chat.history });
   tapConfirm($('#a-quiz'), { confirmLabel: '한 번 더 누르면 문제 풀기', onConfirm: quizFromChat });
   renderChrome();
 }

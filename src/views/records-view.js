@@ -3,6 +3,7 @@ import { $, h, formatDate } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { sourcesBlock, metaLine, chatContextBlock } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
+import { pairActions, attachExport } from '../qa-export.js';
 import { decoratePre } from '../code-block.js';
 import { list } from '../store.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
@@ -13,7 +14,7 @@ import { tapConfirm } from '../tap-confirm.js';
 import { getNote } from '../notes.js';
 import { initDetailTools } from '../detail-tools.js';
 import { splitTerms, recordFields, chatFields, searchFields, markParts } from '../list-search.js';
-import { createFilterBar, periodRange, inPeriod, sortItems, isFiltered, inCategory, categoryOptions, pathText, PATH_SEP } from '../list-filter.js';
+import { createFilterBar, periodRange, inPeriod, sortItems, isFiltered, inCategories, categoryOptions, pathText, toggleTopCategory, hasTopSelected } from '../list-filter.js';
 
 const VERDICT_LABEL = { correct: '정답', partial: '부분', wrong: '오답' };
 const PAGE = 30;
@@ -43,7 +44,9 @@ export function initRecordsView({ onResume, onContinue, onOpen, onBack, onDelete
   // 삭제를 미뤄 두거나 되돌리면 목록과 상세를 다시 그린다.
   onTrashChange(() => renderRecordsView());
   $('#s-back').addEventListener('click', onBack);
-  detailTools = initDetailTools(attachChatNav($('#s-detail-body'), { questionSelector: '.qa-q', dock: $('#s-detail-dock') }));
+  const nav = attachChatNav($('#s-detail-body'), { questionSelector: '.qa-q', dock: $('#s-detail-dock') });
+  detailTools = initDetailTools(nav);
+  attachExport(nav, $('#s-detail-body'), openedConv);
   // 필터 줄은 여기서 한 번만 만든다. 다시 그리면 검색칸의 포커스와 글자가 사라진다.
   filterBar = createFilterBar($('#s-filter'), {
     key: 'records.filter',
@@ -87,8 +90,20 @@ function reviewAction(r) {
   return h('button', { type: 'button', onclick: () => addFromRecord(r) }, item ? '복습에 다시 넣기' : '복습에 넣기');
 }
 
-function qaBlock(t) {
-  return h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a, true), sourcesBlock(t.sources), metaLine(t.meta));
+// conv 는 내보내기 글의 { title, context? } 이다.
+function qaBlock(t, conv) {
+  return h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a, true), sourcesBlock(t.sources), metaLine(t.meta), pairActions(conv, t));
+}
+
+const recordConv = (r) => ({ title: `문제: ${r.question.concept}` });
+const chatConv = (c) => ({ title: c.title, context: c.context });
+
+// 열린 상세의 대화를 내보내기 창에 준다. 문제 상세는 더 물어본 내용, 대화 상세는 그 대화다.
+function openedConv() {
+  if (!opened) return null;
+  const item = list(opened.kind === 'record' ? 'records' : 'chats').find((x) => x.id === opened.id);
+  if (!item) return null;
+  return opened.kind === 'record' ? { ...recordConv(item), pairs: item.tutor ?? [] } : { ...chatConv(item), pairs: item.history };
 }
 
 // ── 목록 ──────────────────────────────────────────────
@@ -191,23 +206,22 @@ function moreButton(el, kind, total) {
   el.textContent = `더 보기 (남은 ${Math.max(0, total - shown[kind])}개)`;
 }
 
-const topOf = (cat) => cat.split(PATH_SEP)[0];
-
 function renderStatsTable(rows, totalRecords, f) {
   const stats = statsByCategory(rows.map((x) => x.item));
   $('#s-empty').hidden = stats.length > 0;
   $('#s-empty').textContent = totalRecords === 0 ? '아직 푼 문제가 없어요.' : '조건에 맞는 푼 문제가 없어요.';
   $('#s-table').hidden = stats.length === 0;
-  const toggle = (cat) => filterBar.patch({ cat: filterBar.state.cat === cat ? '' : cat });
+  // 누른 분야를 고른 분야에 넣거나 뺀다.
+  const toggle = (cat) => filterBar.patch({ cats: toggleTopCategory(filterBar.state.cats, cat) });
   $('#s-table tbody').replaceChildren(
     ...stats.map((s) =>
       h(
         'tr',
         {
           'data-cat': s.cat,
-          class: topOf(f.cat) === s.cat ? 'selected' : '',
+          class: hasTopSelected(f.cats, s.cat) ? 'selected' : '',
           tabindex: 0,
-          'aria-pressed': topOf(f.cat) === s.cat ? 'true' : 'false',
+          'aria-pressed': hasTopSelected(f.cats, s.cat) ? 'true' : 'false',
           onclick: () => toggle(s.cat),
           onkeydown: (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -238,7 +252,7 @@ function renderLists() {
   const recordTotal = allRecords.filter((x) => isArchived('record', x.id) === f.archived).length;
   const chatTotal = allChats.filter((x) => isArchived('chat', x.id) === f.archived).length;
   const recordRows = sortItems(
-    archiveView(recordBase, f).filter(({ item }) => inCategory(recordPath(item), f.cat) && (f.verdict === 'all' || item.verdict === f.verdict)),
+    archiveView(recordBase, f).filter(({ item }) => inCategories(recordPath(item), f.cats) && (f.verdicts.length === 0 || f.verdicts.includes(item.verdict))),
     f.sort,
     (x) => x.item.at,
     (x) => recordCat(x.item),
@@ -249,7 +263,7 @@ function renderLists() {
 
   // 대화. 결과 필터는 적용하지 않는다.
   const chatRows = sortItems(
-    archiveView(baseFilter(allChats, 'chat', f), f).filter(({ item }) => inCategory(chatPath(item), f.cat)),
+    archiveView(baseFilter(allChats, 'chat', f), f).filter(({ item }) => inCategories(chatPath(item), f.cats)),
     f.sort,
     (x) => chatTime(x.item),
     (x) => chatCat(x.item),
@@ -279,7 +293,7 @@ function recordDetail(r) {
     h('h4', {}, '해설'),
     mdBlock(q.explanation),
     r.tutor?.length ? h('h4', {}, `더 물어본 내용 (${r.tutor.length}개)`) : '',
-    ...(r.tutor ?? []).map(qaBlock),
+    ...(r.tutor ?? []).map((t) => qaBlock(t, recordConv(r))),
   ];
 }
 
@@ -313,7 +327,7 @@ function chatDetail(c) {
     h('h2', { class: 'detail-title' }, chatTitle(c)),
     h('p', { class: 'muted small' }, `${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
     c.context ? chatContextBlock(c) : '',
-    ...c.history.map(qaBlock),
+    ...c.history.map((t) => qaBlock(t, chatConv(c))),
   ];
 }
 

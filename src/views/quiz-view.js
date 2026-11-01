@@ -3,12 +3,13 @@ import { $, h, fillSelect, remember } from '../dom.js';
 import { renderMarkdown, renderCode } from '../markdown.js';
 import { appendBubble, appendMeta, streamInto, showBubbleError } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
+import { appendPairActions, attachExport } from '../qa-export.js';
 import { TOPICS, DIFFICULTIES, QUESTION_TYPES, CUSTOM_CATEGORY_ID, CUSTOM_CATEGORY_LABEL } from '../topics.js';
 import { generateQuestion, gradeChoice, gradeAnswer, tutorContext, askTutor } from '../quiz.js';
 import { describeError } from '../api.js';
 import { getSetting } from '../settings.js';
 import { put, get, list, newId } from '../store.js';
-import { inCategory, lastNode } from '../list-filter.js';
+import { inCategories, lastNode } from '../list-filter.js';
 import { applyResult, dueItems, findItemForRecord, addFromRecord } from '../review.js';
 
 const VERDICT_LABEL = { correct: '정답', partial: '부분 정답', wrong: '오답' };
@@ -17,7 +18,7 @@ const ADD_TOPIC = '__add__';
 let current = null; // { topic, difficulty, type, question, review, context, record, chosen, tutor }
 let requestSeq = 0;
 // 분야만 차례로 풀기의 범위 (분야 이름). 전체 추천 개념을 잇는 중이면 null.
-let reviewCategory = null;
+let reviewCategories = null; // 「다음」 이 낼 추천 복습의 분야들 (경로 글자 배열). null 이면 범위가 없다.
 
 function customTopics() {
   return list('topics')
@@ -226,17 +227,16 @@ function resetCardButtons() {
 function next() {
   resetCardButtons();
   if (current.review) {
-    const category = reviewCategory;
-    const [item] = dueItems().filter((r) => category === null || inCategory(r.topic.path, category));
+    const categories = reviewCategories;
+    const [item] = dueItems().filter((r) => categories === null || inCategories(r.topic.path, categories));
     if (item) {
-      startReview(item, category === null ? undefined : { category });
+      startReview(item, categories === null ? undefined : { categories });
     } else {
       current = null;
-      reviewCategory = null;
+      reviewCategories = null;
       showPanels({ setup: true, card: false, result: false, tutor: false });
-      setStatus(category === null
-        ? '추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.'
-        : `${lastNode(category)} 분야의 추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.`);
+      const scope = categories === null ? '' : categories.length === 1 ? `${lastNode(categories[0])} 분야의 ` : '고른 분야의 ';
+      setStatus(`${scope}추천 복습을 다 풀었어요. 복습 탭에서 다른 개념도 골라 풀 수 있어요.`);
     }
     return;
   }
@@ -249,16 +249,16 @@ function next() {
   });
 }
 
-// opts.category 가 있으면 「다음」 이 그 분야의 추천 개념만 낸다. 없으면 범위를 지운다.
+// opts.categories (경로 글자 배열) 가 있으면 「다음」 이 그 분야들의 추천 개념만 낸다. 없으면 범위를 지운다.
 export function startReview(item, opts = {}) {
-  reviewCategory = opts.category ?? null;
+  reviewCategories = opts.categories ?? null;
   resetCardButtons();
   startQuestion({ topic: item.topic, difficulty: item.difficulty, type: 'auto', review: item });
 }
 
 // 「묻기」 대화에서 다룬 개념으로 문제를 낸다. 난이도와 형식은 풀기 화면에 고른 값을 쓴다.
 export function startFromChat({ topic, context }) {
-  reviewCategory = null;
+  reviewCategories = null;
   resetCardButtons();
   startQuestion({ topic, difficulty: $('#q-difficulty').value, type: $('#q-type').value, review: null, context });
 }
@@ -271,6 +271,9 @@ function openTutor() {
   $('#tutor-input').focus();
   $('#tutor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// 더 물어보기 내보내기 글의 대화 제목.
+const tutorTitle = (record) => `문제: ${record.question.concept}`;
 
 async function sendTutor(event) {
   event.preventDefault();
@@ -298,6 +301,7 @@ async function sendTutor(event) {
       ...current.record,
       tutor: [...(current.record.tutor ?? []), { q: text, a: answer, at: Date.now(), meta: message.meta }],
     });
+    appendPairActions(body, { title: tutorTitle(current.record) }, { q: text, a: answer });
   } catch (err) {
     tutor.messages.pop();
     showBubbleError(body, describeError(err));
@@ -333,7 +337,7 @@ export function initQuizView({ onContinueInAsk }) {
       difficulty: $('#q-difficulty').value,
       type: $('#q-type').value,
     });
-    reviewCategory = null;
+    reviewCategories = null;
     resetCardButtons();
     startQuestion({ ...readSetup(), review: null });
   });
@@ -360,5 +364,6 @@ export function initQuizView({ onContinueInAsk }) {
   $('#tutor-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#tutor-form').requestSubmit();
   });
-  attachChatNav($('#tutor-log'), { questionSelector: '.bubble.user', bottom: $('#tutor-form'), dock: $('#tutor .chat-dock') });
+  const nav = attachChatNav($('#tutor-log'), { questionSelector: '.bubble.user', bottom: $('#tutor-form'), dock: $('#tutor .chat-dock') });
+  attachExport(nav, $('#tutor-log'), () => (current?.record?.tutor?.length ? { title: tutorTitle(current.record), pairs: current.record.tutor } : null));
 }

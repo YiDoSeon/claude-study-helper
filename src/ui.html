@@ -155,6 +155,7 @@
       <h3>Claude API</h3>
       <label>API 키 <input type="password" id="set-key" autocomplete="off" placeholder="sk-ant-…"></label>
       <label>모델 <select id="set-model"></select></label>
+      <p class="muted small">모델은 이 기기에만 저장돼요. 다른 기기는 그 기기에서 바꾸거나 QR 코드로 옮기세요.</p>
       <p class="muted small">이 기기에서 쓴 금액 (추정): <span id="set-cost"></span>
         <button type="button" id="set-cost-reset" class="link">초기화</button></p>
     </div>
@@ -180,7 +181,7 @@
 
     <div class="card">
       <h3>다른 기기로 옮기기</h3>
-      <p class="muted small">API 키와 GitHub 설정을 QR 코드로 폰에 옮겨요.</p>
+      <p class="muted small">API 키, 모델, GitHub 설정을 QR 코드로 폰에 옮겨요.</p>
       <button type="button" id="set-qr-show">QR 코드 보기</button>
       <div id="set-qr" hidden>
         <canvas id="set-qr-canvas"></canvas>

@@ -46,7 +46,7 @@ function showQr() {
   QRCode.toCanvas($('#set-qr-canvas'), buildSetupLink(), { width: 260, margin: 2 }, (err) => {
     $('#set-qr-note').textContent = err
       ? `QR 코드를 만들지 못했어요: ${err.message}`
-      : '폰 카메라로 찍으면 이 기기의 API 키와 GitHub 설정이 그 폰에 저장돼요. 다른 사람에게 보이지 않게 하고, 다 쓰면 숨기세요.';
+      : '폰 카메라로 찍으면 이 기기의 API 키, 모델, GitHub 설정이 그 폰에 저장돼요. 다른 사람에게 보이지 않게 하고, 다 쓰면 숨기세요.';
     $('#set-qr-canvas').hidden = !!err;
     $('#set-qr').hidden = false;
   });

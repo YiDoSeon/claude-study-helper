@@ -121,8 +121,10 @@ export function attachChatNav(container, { questionSelector, bottom = container,
       panel.after(toolPanel);
       toggle.before(...buttons);
     },
+    // 질문 목록 창을 닫는다. 도구가 자기 창을 열기 전에 부르므로 다른 도구의 창도 함께 닫아 창이 겹치지 않게 한다.
     closePanel() {
       panel.hidden = true;
+      for (const tool of tools) tool.close();
     },
   };
 }

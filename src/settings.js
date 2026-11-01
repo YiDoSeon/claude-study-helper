@@ -46,7 +46,8 @@ export function hasGithubSync() {
 }
 
 // 다른 기기로 키를 옮기는 링크. 키는 URL fragment(#)에 담아 서버로 전송되지 않게 한다.
-const SETUP_FIELDS = ['anthropicKey', 'githubToken', 'githubRepo', 'githubPath', 'usageCycleDay'];
+// model 도 옮긴다. 빠지면 받은 기기는 기본값 Opus 로 요청한다.
+const SETUP_FIELDS = ['anthropicKey', 'model', 'githubToken', 'githubRepo', 'githubPath', 'usageCycleDay'];
 
 function toBase64Url(text) {
   const bytes = new TextEncoder().encode(text);
