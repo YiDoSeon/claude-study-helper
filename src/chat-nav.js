@@ -22,6 +22,11 @@ function firstBlockText(answer) {
   return answer.textContent.trim();
 }
 
+// 질문 요소의 질문 글. 질문 쪽 「복사」·「저장」 버튼 글자가 섞이지 않게 글 요소 (.qa-q-text, 말풍선의 .md) 에서 읽는다.
+function questionText(q) {
+  return (q.querySelector('.qa-q-text, .md') ?? q).textContent;
+}
+
 // 상단바와 하단 탭에 가리지 않게 el 의 위쪽이나 아래쪽으로 스크롤한다.
 function scrollToEdge(el, edge) {
   const rect = el.getBoundingClientRect();
@@ -81,7 +86,7 @@ export function attachChatNav(container, { questionSelector, bottom = container,
     if (panel.hidden) {
       list.replaceChildren(
         ...questions().map((q) => {
-          const items = [h('button', { type: 'button', class: 'chat-nav-item', onclick: () => go(q, 'top') }, shorten(q.textContent.trim().split('\n')[0]))];
+          const items = [h('button', { type: 'button', class: 'chat-nav-item', onclick: () => go(q, 'top') }, shorten(questionText(q).trim().split('\n')[0]))];
           const answer = q.nextElementSibling;
           const answerText = answer ? shorten(firstBlockText(answer)) : '';
           if (answerText) {

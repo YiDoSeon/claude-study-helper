@@ -100,9 +100,24 @@ export function pairActions(conv, pair) {
   );
 }
 
-// 답 말풍선 (body 의 부모) 끝에 버튼 줄을 붙인다. 출처와 모델 한 줄 뒤에 부른다.
+// 질문 쪽 버튼 줄. 답 쪽과 같은 글을 복사·저장한다. 질문 목록이 질문 제목을 읽을 때 섞이지 않게 클래스를 나눈다.
+export function questionActions(conv, pair) {
+  const row = pairActions(conv, pair);
+  row.classList.add('qa-q-actions');
+  return row;
+}
+
+// 질문 요소 (질문 말풍선이나 기록 상세의 .qa-q) 끝에 질문 쪽 버튼 줄을 붙인다.
+export function appendQuestionActions(questionEl, conv, pair) {
+  questionEl.append(questionActions(conv, pair));
+}
+
+// 답 말풍선 (body 의 부모) 끝에 버튼 줄을 붙이고, 바로 앞의 질문 말풍선에도 붙인다. 출처와 모델 한 줄 뒤에 부른다.
 export function appendPairActions(body, conv, pair) {
-  body.parentElement.append(pairActions(conv, pair));
+  const bubble = body.parentElement;
+  bubble.append(pairActions(conv, pair));
+  const question = bubble.previousElementSibling;
+  if (question?.matches('.bubble.user')) appendQuestionActions(question, conv, pair);
 }
 
 // ── 내보내기 창 ──

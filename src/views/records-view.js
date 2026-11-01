@@ -3,7 +3,7 @@ import { $, h, formatDate } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { sourcesBlock, metaLine, chatContextBlock } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
-import { pairActions, attachExport } from '../qa-export.js';
+import { pairActions, appendQuestionActions, attachExport } from '../qa-export.js';
 import { decoratePre } from '../code-block.js';
 import { list } from '../store.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
@@ -92,7 +92,10 @@ function reviewAction(r) {
 
 // conv 는 내보내기 글의 { title, context? } 이다.
 function qaBlock(t, conv) {
-  return h('div', { class: 'qa' }, h('p', { class: 'qa-q' }, t.q), mdBlock(t.a, true), sourcesBlock(t.sources), metaLine(t.meta), pairActions(conv, t));
+  // .qa-q 는 질문 글 (p.qa-q-text) 과 질문 쪽 버튼 줄을 감싼다. 답은 .qa-q 의 다음 요소다.
+  const question = h('div', { class: 'qa-q' }, h('p', { class: 'qa-q-text' }, t.q));
+  appendQuestionActions(question, conv, t);
+  return h('div', { class: 'qa' }, question, mdBlock(t.a, true), sourcesBlock(t.sources), metaLine(t.meta), pairActions(conv, t));
 }
 
 const recordConv = (r) => ({ title: `문제: ${r.question.concept}` });
