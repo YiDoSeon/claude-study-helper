@@ -8,18 +8,27 @@ const SAVE_DELAY_MS = 200;
 
 let apply = () => {};
 let saveTimer = 0;
+// 마지막으로 그린 화면. { view, detail }
+let shown = {};
 
 // 브라우저가 스크롤 위치를 따로 되돌려 섞이지 않게 끄고, 기록마다 저장한 위치로 직접 돌린다.
 // apply(state) 는 상태대로 화면을 그린다. 시작할 때 쓸 상태를 돌려준다.
 export function initRouter({ onApply, initial }) {
-  apply = onApply;
+  apply = (state) => {
+    shown = { view: state.view, detail: state.detail };
+    onApply(state);
+  };
   history.scrollRestoration = 'manual';
   // 새로 고침이면 남아 있던 상태를 이어 쓴다.
   const start = history.state?.view ? history.state : { ...initial, scrollY: 0 };
   replace(start);
+  // 시작 화면은 main.js 가 이 함수가 돌려준 상태로 직접 그린다.
+  shown = { view: start.view, detail: start.detail };
   window.addEventListener('popstate', () => {
     if (!history.state?.view) return;
-    apply(history.state);
+    // 같은 화면 안의 기록 (pushPosition) 사이를 오가면 다시 그리지 않고 위치만 돌린다.
+    // 다시 그리면 그림 iframe 이 새로 만들어져 애니메이션이 처음부터 시작된다.
+    if (history.state.view !== shown.view || !sameDetail(history.state.detail, shown.detail)) apply(history.state);
     window.scrollTo(0, history.state.scrollY ?? 0);
   });
   window.addEventListener('scroll', () => {
@@ -56,8 +65,9 @@ export function navigate(state) {
 // 같은 화면 안에서 위치만 옮기기 전에 부른다. 지금 위치를 저장하고 같은 화면의 기록을 하나 넣어,
 // 뒤로 가기가 옮기기 전 위치로 돌아가게 한다. 옮긴 뒤의 위치는 스크롤하면서 저장된다.
 // steps 는 같은 화면에서 이렇게 쌓인 기록 수다. 기록 상세 화면의 「← 목록으로」 가 한 번에 돌아갈 때 쓴다.
-export function pushPosition() {
+// extra 는 새 기록에만 더할 값이다 (「크게 보기」 창이 자기 기록을 알아보는 표시 등).
+export function pushPosition(extra = {}) {
   saveScroll();
   const s = history.state ?? {};
-  history.pushState({ ...s, steps: (s.steps ?? 0) + 1 }, '');
+  history.pushState({ ...s, ...extra, steps: (s.steps ?? 0) + 1 }, '');
 }

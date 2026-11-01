@@ -1,5 +1,6 @@
 // 그림 「크게 보기」 창: 화면 전체를 덮고, +/− 확대와 가로·세로 스크롤, 닫기 버튼, Esc 를 지원한다.
 import { createVisualFrame } from './visual-frame.js';
+import { pushPosition } from './router.js';
 
 const STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4];
 
@@ -48,19 +49,33 @@ export function openZoom({ kind, code, svg }) {
   const minus = mk('−', () => step(-1), '축소');
   const plus = mk('+', () => step(1), '확대');
 
+  // 뒤로 가기가 창만 닫게 같은 화면의 기록을 하나 넣는다. token 으로 이 창이 넣은 기록인지 알아본다.
+  const token = `${Date.now()}-${Math.random()}`;
+  pushPosition({ zoom: token });
+
   let destroy = () => {};
+  let closed = false;
   const close = () => {
+    if (closed) return;
+    closed = true;
     destroy();
     document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('popstate', close);
     overlay.remove();
+  };
+  // 닫기 버튼과 Esc: 창을 바로 닫고, 이 창이 넣은 기록이 맨 위면 뒤로 가서 지운다.
+  const closeByUser = () => {
+    close();
+    if (history.state?.zoom === token) history.back();
   };
   function onKey(e) {
     if (e.key === 'Escape') {
       e.stopPropagation();
-      close();
+      closeByUser();
     }
   }
-  const closeBtn = mk('닫기', close);
+  window.addEventListener('popstate', close);
+  const closeBtn = mk('닫기', closeByUser);
   const bar = document.createElement('div');
   bar.className = 'zoom-bar';
   bar.append(minus, label, plus, closeBtn);
@@ -90,5 +105,5 @@ export function openZoom({ kind, code, svg }) {
   document.addEventListener('keydown', onKey, true);
   fit();
   closeBtn.focus();
-  return { close, overlay };
+  return { close: closeByUser, overlay };
 }
