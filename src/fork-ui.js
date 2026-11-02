@@ -9,6 +9,11 @@ function forkWhat(f) {
   return f.summarized ? '앞 대화 요약' : '앞 대화 그대로';
 }
 
+// fork 로 만든 대화에 붙이는 작은 배지. 기록 목록 줄, 상세 제목, 원래 대화 줄이 같이 쓴다.
+export function forkBadge() {
+  return h('span', { class: 'fork-badge' }, 'fork');
+}
+
 // saved.forkOf 가 없으면 null. onOpen(id) 는 「원래 대화 보기」 를 누르면 부른다.
 // 원래 대화가 지워졌으면 버튼 대신 안내 글을 둔다.
 export function forkOriginLine(saved, onOpen) {
@@ -17,7 +22,7 @@ export function forkOriginLine(saved, onOpen) {
   const open = get('chats', f.id)
     ? h('button', { type: 'button', class: 'fork-origin-open', 'data-fork': 'origin', onclick: () => onOpen(f.id) }, '원래 대화 보기')
     : h('span', {}, '(원래 대화는 지워졌어요)');
-  return h('p', { class: 'fork-origin muted small' }, `「${f.title}」 에서 fork · ${forkWhat(f)} `, open);
+  return h('p', { class: 'fork-origin muted small' }, forkBadge(), `「${f.title}」 에서 · ${forkWhat(f)} `, open);
 }
 
 // saved.summary 가 없으면 null.

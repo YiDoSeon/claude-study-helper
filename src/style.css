@@ -497,3 +497,18 @@ th, td { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: l
 .subtabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 12px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .subtabs button { min-height: 40px; min-width: 0; border: 0; background: none; color: var(--muted); }
 .subtabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+
+/* 메모리 (memory-list.js, memory-finder.js): 설정의 목록과 대화 화면의 「기억 찾기」 창. */
+.memory-list, .memory-candidates { margin: 0; padding: 0; list-style: none; }
+.memory-row { padding: 8px 0; border-top: 1px solid var(--border); }
+.memory-row textarea, .memory-add textarea, .memory-candidates textarea { width: 100%; margin: 0; font-size: 0.9rem; }
+.memory-row-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.memory-row-bar select, .memory-panel select, .memory-add select { width: auto; margin: 0; min-height: 36px; }
+.memory-row-bar button { min-height: 32px; margin-left: auto; padding: 2px 12px; font-size: 0.8rem; }
+.memory-add { margin-top: 12px; }
+.memory-candidates li { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.memory-candidates input { width: auto; margin: 8px 0 0; }
+.memory-status.error { color: var(--bad); }
+/* fork 배지 (fork-ui.js 의 forkBadge): 강조색의 작은 알약. */
+.fork-badge { display: inline-block; margin: 0 0 0 6px; padding: 0 7px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-size: 0.72rem; font-weight: 700; line-height: 1.6; vertical-align: 2px; }
+.fork-origin .fork-badge { margin: 0; vertical-align: 0; }

@@ -2,6 +2,7 @@
 // 범용 대화도 chats 컬렉션에 두고 mode: 'general' 로 묻기 대화와 구분한다.
 import { streamChat } from './api.js';
 import { VISUAL_RULES } from './quiz.js';
+import { memoryPrompt } from './memory.js';
 
 export const TALK_MODE = 'general';
 
@@ -14,6 +15,7 @@ const GENERAL_SYSTEM = `너는 사용자의 질문과 작업을 돕는 조수다
 ${VISUAL_RULES}
 - 한국어로 답한다. 코드와 고유한 이름은 원래 글자로 둔다. Markdown 을 쓸 수 있다.`;
 
+// 메모리 (memory.js) 중 「대화」 에 넣는 항목을 프롬프트 끝에 붙인다.
 export function askGeneral({ messages, webSearch, choice, onText }) {
-  return streamChat({ system: GENERAL_SYSTEM, messages, effort: 'medium', webSearch, choice, onText });
+  return streamChat({ system: GENERAL_SYSTEM + memoryPrompt('talk'), messages, effort: 'medium', webSearch, choice, onText });
 }

@@ -7,7 +7,7 @@ import { pairActions, appendQuestionActions, attachExport } from '../qa-export.j
 import { decoratePre } from '../code-block.js';
 import { list, get } from '../store.js';
 import { forkButton } from '../fork-dialog.js';
-import { forkOriginLine, summaryBlock } from '../fork-ui.js';
+import { forkOriginLine, summaryBlock, forkBadge } from '../fork-ui.js';
 import { isTalk } from '../talk.js';
 import { initRecordsTabs, selectRecordsTab } from '../records-tabs.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
@@ -168,10 +168,10 @@ function recordRow(r, hit, terms) {
   );
 }
 
-// 대화 목록 줄과 상세 머리의 한 줄: 분야 (범용 대화는 「대화」), (fork), 질문 개수, 시각.
+// 대화 목록 줄과 상세 머리의 한 줄: 분야 (범용 대화는 「대화」), 질문 개수, 시각. fork 는 제목 옆 배지로 따로 보인다.
 function chatMeta(c) {
   const label = isTalk(c) ? '대화' : c.category || '자유 질문';
-  return [label, c.forkOf ? 'fork' : '', `질문 ${c.history.length}개`, formatDate(c.updatedAt ?? c.at)].filter(Boolean).join(' · ');
+  return [label, `질문 ${c.history.length}개`, formatDate(c.updatedAt ?? c.at)].join(' · ');
 }
 
 function chatRow(c, hit, terms) {
@@ -183,6 +183,7 @@ function chatRow(c, hit, terms) {
       { type: 'button', class: 'record-row', 'data-key': `chat:${c.id}`, onclick: () => onOpenDetail({ kind: 'chat', id: c.id }) },
       starMark('chat', c.id),
       h('strong', {}, ...titleNodes(chatTitle(c), terms)),
+      c.forkOf ? forkBadge() : '',
       h('span', { class: 'muted small' }, ` · ${chatMeta(c)}`),
       noteMark('chat', c.id),
       hitLine(hit),
@@ -358,7 +359,7 @@ function chatActions(c) {
 
 function chatDetail(c) {
   return [
-    h('h2', { class: 'detail-title' }, chatTitle(c)),
+    h('h2', { class: 'detail-title' }, chatTitle(c), c.forkOf ? forkBadge() : ''),
     h('p', { class: 'muted small' }, chatMeta(c)),
     forkOriginLine(c, onOpenChat) ?? '',
     c.context ? chatContextBlock(c) : '',

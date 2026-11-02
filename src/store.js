@@ -2,10 +2,10 @@
 // 모든 항목은 id 로 구분하고 updatedAt 이 더 큰 쪽이 이긴다. 단 삭제 표시 (deleted: true) 는 updatedAt 과 상관없이 이긴다.
 import { loadStoredData, saveStoredData } from './data-storage.js';
 
-export const COLLECTIONS = ['records', 'reviews', 'topics', 'chats', 'usage', 'stars', 'notes', 'archive'];
+export const COLLECTIONS = ['records', 'reviews', 'topics', 'chats', 'usage', 'stars', 'notes', 'archive', 'memories'];
 
 function emptyData() {
-  return { version: 1, records: {}, reviews: {}, topics: {}, chats: {}, usage: {}, stars: {}, notes: {}, archive: {} };
+  return { version: 1, records: {}, reviews: {}, topics: {}, chats: {}, usage: {}, stars: {}, notes: {}, archive: {}, memories: {} };
 }
 
 function normalize(raw) {

@@ -14,6 +14,7 @@ import { chatPreface } from '../chat-fork.js';
 import { forkOriginLine, summaryBlock } from '../fork-ui.js';
 import { withContext, textMessages, pairConv } from '../chat-thread.js';
 import { askGeneral, TALK_MODE } from '../talk.js';
+import { attachMemoryFinder } from '../memory-finder.js';
 
 // { id, at, title, mode: 'general', history: [{ q, a, at, meta, sources? }], messages: API 에 보낼 대화,
 //   choice: 마지막으로 고른 { model, effort }, fork 로 만들었으면 forkOf 와 summary }
@@ -146,5 +147,6 @@ export function initTalkView({ onOpenChat }) {
   attachDockToggle($('#view-talk .chat-dock'));
   const nav = attachChatNav($('#g-log'), { questionSelector: '.bubble.user', bottom: $('#g-form'), dock: $('#view-talk .chat-dock') });
   attachExport(nav, $('#g-log'), () => chat && { title: chat.title, pairs: chat.history });
+  attachMemoryFinder(nav, $('#g-log'), () => chat);
   renderChrome();
 }

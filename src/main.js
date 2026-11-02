@@ -10,6 +10,7 @@ import { initAskView, resumeChat, continueFromRecord, closeChatIfOpen, openForke
 import { initFork } from './fork-dialog.js';
 import { initTalkView, resumeTalk, openForkedTalk, closeTalkIfOpen } from './views/talk-view.js';
 import { isTalk } from './talk.js';
+import { initMemoryList } from './memory-list.js';
 import { initReviewView, renderReviewView } from './views/review-view.js';
 import { initRecordsView, renderRecordsView, showRecordsDetail } from './views/records-view.js';
 import { initRouter, navigate } from './router.js';
@@ -132,6 +133,7 @@ async function init() {
     onOpenChatById: openChatDetail,
   });
   initSettingsView({ onKeyChange: updateKeyNotice, onUsageChange: updateUsageStatus });
+  initMemoryList();
 
   for (const tab of document.querySelectorAll('nav [data-view]')) {
     tab.addEventListener('click', () => goTo(tab.dataset.view));

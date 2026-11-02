@@ -1,6 +1,7 @@
 // 문제 출제, 채점, 튜터 대화의 프롬프트와 응답 형식.
 import { z } from 'zod';
 import { callJson, streamChat, FormatError } from './api.js';
+import { memoryPrompt } from './memory.js';
 
 const QuestionSchema = z.object({
   type: z.enum(['multiple_choice', 'short_answer', 'code_reading', 'explain']),
@@ -179,8 +180,9 @@ export function askTutor({ messages, choice, onText }) {
   return streamChat({ system: TUTOR_SYSTEM, messages, effort: 'medium', choice, onText });
 }
 
+// 「묻기」 대화. 메모리 (memory.js) 중 묻기에도 넣는 항목을 프롬프트 끝에 붙인다.
 export function askFree({ messages, webSearch, choice, onText }) {
-  return streamChat({ system: FREE_TUTOR_SYSTEM, messages, effort: 'medium', webSearch, choice, onText });
+  return streamChat({ system: FREE_TUTOR_SYSTEM + memoryPrompt('ask'), messages, effort: 'medium', webSearch, choice, onText });
 }
 
 // 「묻기」 대화를 출제용 맥락 글로 바꾼다. 길면 최근 대화를 남긴다.

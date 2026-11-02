@@ -15,6 +15,7 @@ import { put, list, newId } from '../store.js';
 import { chatPreface } from '../chat-fork.js';
 import { forkOriginLine, summaryBlock } from '../fork-ui.js';
 import { withContext, textMessages, pairConv } from '../chat-thread.js';
+import { attachMemoryFinder } from '../memory-finder.js';
 
 const FREE_CATEGORY = '자유 질문';
 
@@ -252,6 +253,7 @@ export function initAskView({ onQuiz, onOpenChat }) {
   attachDockToggle($('#view-ask .chat-dock'));
   const nav = attachChatNav($('#a-log'), { questionSelector: '.bubble.user', bottom: $('#a-form'), dock: $('#view-ask .chat-dock') });
   attachExport(nav, $('#a-log'), () => chat && { title: chat.title, context: chat.context, pairs: chat.history });
+  attachMemoryFinder(nav, $('#a-log'), () => chat);
   tapConfirm($('#a-quiz'), { confirmLabel: '한 번 더 누르면 문제 풀기', onConfirm: quizFromChat });
   renderChrome();
 }

@@ -202,6 +202,21 @@
         <button type="button" id="set-cost-reset" class="link">초기화</button></p>
     </div>
 
+    <div class="card" id="memory-card">
+      <h3>메모리</h3>
+      <p class="muted small">「대화」 와 「묻기」 에서 Claude 가 참고하는 사실이에요. 대화 화면의 「기억 찾기」 로 찾거나 여기에 직접 적어요. GitHub 동기화가 켜져 있으면 저장소에도 올라가요.</p>
+      <p id="memory-size" class="muted small"></p>
+      <p id="memory-empty" class="muted">아직 기억한 것이 없어요.</p>
+      <ul id="memory-list" class="memory-list"></ul>
+      <form id="memory-add" class="memory-add">
+        <textarea id="memory-input" rows="2" placeholder="예: Unity 와 C# 으로 게임을 만든다"></textarea>
+        <div class="actions compact">
+          <select id="memory-scope" aria-label="적용 범위"></select>
+          <button type="submit">추가</button>
+        </div>
+      </form>
+    </div>
+
     <div class="card">
       <h3>이번 주기 사용액</h3>
       <label>매달 새로 세는 날 <input type="number" id="set-cycle-day" min="1" max="31" step="1" inputmode="numeric"></label>
