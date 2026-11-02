@@ -112,6 +112,24 @@
     </div>
   </section>
 
+  <section id="view-talk" class="view" hidden>
+    <div class="card">
+      <p id="g-empty" class="muted small">공부와 상관없는 것도 자유롭게 이야기해 보세요. 대화는 기록 화면의 「대화」 에 남아요.</p>
+      <div id="g-log" class="chat-log"></div>
+      <div class="chat-dock">
+        <div id="g-choice" class="chat-choice"></div>
+        <form id="g-form" class="chat-form">
+          <textarea id="g-input" rows="2" placeholder="무엇이든 물어보세요 (Ctrl+Enter 로 보내기)"></textarea>
+          <label class="check"><input type="checkbox" id="g-web"> 웹 검색 <span class="muted small dock-note">(검색 1회 약 $0.01, 결과 글은 입력 토큰으로 계산)</span></label>
+          <button type="submit" class="primary">보내기</button>
+        </form>
+        <div class="actions">
+          <button type="button" id="g-new" hidden>새 대화</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="view-review" class="view" hidden>
     <div class="card">
       <p id="r-summary"></p>
@@ -128,7 +146,13 @@
 
   <section id="view-records" class="view" hidden>
     <div id="s-lists">
+      <div id="s-tabs" class="subtabs" role="tablist" aria-label="기록 종류">
+        <button type="button" role="tab" data-tab="record">문제</button>
+        <button type="button" role="tab" data-tab="chat">묻기</button>
+        <button type="button" role="tab" data-tab="talk">대화</button>
+      </div>
       <div id="s-filter" class="card filter-bar"></div>
+      <div id="s-pane-record" data-pane="record">
       <div class="card">
         <h3>분야별</h3>
         <p id="s-empty" class="muted">아직 푼 문제가 없어요.</p>
@@ -142,10 +166,22 @@
         <ul id="s-recent" class="list"></ul>
         <button type="button" id="s-recent-more" class="more" hidden>더 보기</button>
       </div>
+      </div>
+      <div id="s-pane-chat" data-pane="chat" hidden>
+      <p id="s-chats-none" class="card muted">아직 묻기 대화가 없어요.</p>
       <div id="s-chats-card" class="card" hidden>
         <h3 id="s-chats-title">묻기 대화</h3>
         <ul id="s-chats" class="list"></ul>
         <button type="button" id="s-chats-more" class="more" hidden>더 보기</button>
+      </div>
+      </div>
+      <div id="s-pane-talk" data-pane="talk" hidden>
+      <p id="s-talks-none" class="card muted">아직 대화가 없어요. 「대화」 탭에서 시작한 대화가 여기에 남아요.</p>
+      <div id="s-talks-card" class="card" hidden>
+        <h3 id="s-talks-title">대화</h3>
+        <ul id="s-talks" class="list"></ul>
+        <button type="button" id="s-talks-more" class="more" hidden>더 보기</button>
+      </div>
       </div>
     </div>
     <article id="s-detail" class="card" hidden>
@@ -209,6 +245,7 @@
 <nav class="tabs">
   <button type="button" data-view="quiz">풀기</button>
   <button type="button" data-view="ask">묻기</button>
+  <button type="button" data-view="talk">대화</button>
   <button type="button" data-view="review">복습 <span id="review-badge" class="count" hidden></span></button>
   <button type="button" data-view="records">기록</button>
   <button type="button" data-view="settings">설정</button>

@@ -26,6 +26,7 @@ export function buildForkChat(origin, index, { id, now = Date.now(), single = fa
     history: summary ? [] : forkPairs(origin.history, index, single).map((t) => ({ ...t })),
     forkOf: { id: origin.id, title: origin.title, index, single, summarized: !!summary },
   };
+  if (origin.mode) chat.mode = origin.mode;
   if (origin.topic) chat.topic = origin.topic;
   if (origin.context) chat.context = origin.context;
   if (origin.choice) chat.choice = origin.choice;

@@ -8,6 +8,8 @@ import { startAutoSync, onStatus } from './sync.js';
 import { initQuizView, startReview, startFromChat } from './views/quiz-view.js';
 import { initAskView, resumeChat, continueFromRecord, closeChatIfOpen, openForkedChat } from './views/ask-view.js';
 import { initFork } from './fork-dialog.js';
+import { initTalkView, resumeTalk, openForkedTalk, closeTalkIfOpen } from './views/talk-view.js';
+import { isTalk } from './talk.js';
 import { initReviewView, renderReviewView } from './views/review-view.js';
 import { initRecordsView, renderRecordsView, showRecordsDetail } from './views/records-view.js';
 import { initRouter, navigate } from './router.js';
@@ -18,6 +20,7 @@ import { updateLocalNotice } from './local-notice.js';
 const RENDERERS = {
   quiz: () => {},
   ask: () => {},
+  talk: () => {},
   review: renderReviewView,
   records: renderRecordsView,
   settings: renderSettingsView,
@@ -100,24 +103,31 @@ async function init() {
     },
     onOpenChat: openChatDetail,
   });
+  initTalkView({ onOpenChat: openChatDetail });
+  // 범용 대화 (mode: 'general') 는 「대화」 화면, 나머지는 「묻기」 화면에서 연다.
   initFork({
     onCreated: (chat) => {
-      goTo('ask');
-      openForkedChat(chat);
+      goTo(isTalk(chat) ? 'talk' : 'ask');
+      if (isTalk(chat)) openForkedTalk(chat);
+      else openForkedChat(chat);
       scrollToEnd();
     },
   });
   initRecordsView({
     onResume: (chat) => {
-      goTo('ask');
-      resumeChat(chat);
+      goTo(isTalk(chat) ? 'talk' : 'ask');
+      if (isTalk(chat)) resumeTalk(chat);
+      else resumeChat(chat);
       scrollToEnd();
     },
     onContinue: continueInAsk,
     onOpen: (detail) => navigate({ view: 'records', detail, fromList: true }),
     onBack: backToRecordsList,
     onDeleted: (kind, id) => {
-      if (kind === 'chat') closeChatIfOpen(id);
+      if (kind === 'chat') {
+        closeChatIfOpen(id);
+        closeTalkIfOpen(id);
+      }
     },
     onOpenChatById: openChatDetail,
   });

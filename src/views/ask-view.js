@@ -11,33 +11,12 @@ import { describeError } from '../api.js';
 import { createChoicePicker, defaultChoice, resolveChoice } from '../chat-choice.js';
 import { onModelHintUpdate } from '../model-hint.js';
 import { collectSources, hasSearchBlocks } from '../web-search.js';
-import { put, get, list, newId } from '../store.js';
+import { put, list, newId } from '../store.js';
 import { chatPreface } from '../chat-fork.js';
-import { forkButton } from '../fork-dialog.js';
 import { forkOriginLine, summaryBlock } from '../fork-ui.js';
+import { withContext, textMessages, pairConv } from '../chat-thread.js';
 
 const FREE_CATEGORY = '자유 질문';
-
-// 첫 질문 앞에 붙일 문제 맥락과 이전 대화 요약 (chatPreface). 「더 물어보기」 와 같은 모양으로 보낸다.
-function withContext(preface, question) {
-  return preface ? `${preface}\n\n## 질문\n${question}` : question;
-}
-
-// 저장된 글만으로 API 에 보낼 대화를 만든다. thinking 블록과 검색 블록은 들어가지 않는다.
-function textMessages(saved) {
-  const preface = chatPreface(saved);
-  return saved.history.flatMap((t, i) => [
-    { role: 'user', content: i === 0 ? withContext(preface, t.q) : t.q },
-    { role: 'assistant', content: t.a },
-  ]);
-}
-
-// 쌍마다 붙는 버튼 줄의 conv. fork 버튼은 누를 때 저장된 대화를 다시 읽는다.
-const pairConv = (saved) => ({
-  title: saved.title,
-  context: saved.context,
-  actions: (pair) => [forkButton(() => get('chats', saved.id), pair)],
-});
 
 // { id, at, title, category, history: [{ q, a, at, meta, sources? }], messages: API 에 보낼 대화,
 //   choice: 마지막으로 고른 { model, effort },

@@ -388,12 +388,12 @@ th, td { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: l
   bottom: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   background: var(--surface);
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
 }
-.tabs button { border: 0; border-radius: 0; background: none; color: var(--muted); min-height: 56px; }
+.tabs button { border: 0; border-radius: 0; background: none; color: var(--muted); min-height: 56px; min-width: 0; padding: 0 2px; }
 .tabs button.active { color: var(--accent); font-weight: 700; }
 .count {
   min-width: 20px;
@@ -492,3 +492,8 @@ th, td { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: l
 .fork-origin { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; }
 .fork-origin-open { min-height: 28px; padding: 0 10px; font-size: 0.8rem; }
 .chat-summary { margin-bottom: 8px; }
+
+/* 기록 화면의 하위 탭 (records-tabs.js): 문제, 묻기, 대화. */
+.subtabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 12px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.subtabs button { min-height: 40px; min-width: 0; border: 0; background: none; color: var(--muted); }
+.subtabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); font-weight: 700; }

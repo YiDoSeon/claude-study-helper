@@ -8,6 +8,8 @@ import { decoratePre } from '../code-block.js';
 import { list, get } from '../store.js';
 import { forkButton } from '../fork-dialog.js';
 import { forkOriginLine, summaryBlock } from '../fork-ui.js';
+import { isTalk } from '../talk.js';
+import { initRecordsTabs, selectRecordsTab } from '../records-tabs.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
 import { isStarred } from '../favorites.js';
 import { isArchived, toggleArchive } from '../archive.js';
@@ -21,7 +23,9 @@ import { createFilterBar, periodRange, inPeriod, sortItems, isFiltered, inCatego
 const VERDICT_LABEL = { correct: '정답', partial: '부분', wrong: '오답' };
 const PAGE = 30;
 // 목록마다 보이는 개수. 상세에서 뒤로 가기로 돌아와도 같은 길이로 그리려고 모듈 상태로 둔다.
-const shown = { record: PAGE, chat: PAGE };
+const shown = { record: PAGE, chat: PAGE, talk: PAGE };
+// 목록 종류마다 더 보기 버튼 id.
+const MORE_ID = { record: 's-recent-more', chat: 's-chats-more', talk: 's-talks-more' };
 let filterBar = null;
 
 let onResumeChat = () => {};
@@ -58,15 +62,17 @@ export function initRecordsView({ onResume, onContinue, onOpen, onBack, onDelete
     onChange: () => {
       shown.record = PAGE;
       shown.chat = PAGE;
+      shown.talk = PAGE;
       renderRecordsView();
     },
   });
-  for (const kind of ['record', 'chat']) {
-    $(`#s-${kind === 'record' ? 'recent' : 'chats'}-more`).addEventListener('click', () => {
+  for (const kind of Object.keys(MORE_ID)) {
+    $(`#${MORE_ID[kind]}`).addEventListener('click', () => {
       shown[kind] += PAGE;
       renderLists();
     });
   }
+  initRecordsTabs();
 }
 
 function statsByCategory(records) {
@@ -162,9 +168,10 @@ function recordRow(r, hit, terms) {
   );
 }
 
-// 대화 목록 줄과 상세 머리의 한 줄: 분야, (fork), 질문 개수, 시각.
+// 대화 목록 줄과 상세 머리의 한 줄: 분야 (범용 대화는 「대화」), (fork), 질문 개수, 시각.
 function chatMeta(c) {
-  return [c.category || '자유 질문', c.forkOf ? 'fork' : '', `질문 ${c.history.length}개`, formatDate(c.updatedAt ?? c.at)].filter(Boolean).join(' · ');
+  const label = isTalk(c) ? '대화' : c.category || '자유 질문';
+  return [label, c.forkOf ? 'fork' : '', `질문 ${c.history.length}개`, formatDate(c.updatedAt ?? c.at)].filter(Boolean).join(' · ');
 }
 
 function chatRow(c, hit, terms) {
@@ -255,7 +262,9 @@ function renderStatsTable(rows, totalRecords, f) {
 
 function renderLists() {
   const f = filterBar.state;
-  const allChats = list('chats').filter((c) => !isPendingDelete('chat', c.id));
+  const shownChats = list('chats').filter((c) => !isPendingDelete('chat', c.id));
+  const allChats = shownChats.filter((c) => !isTalk(c));
+  const allTalks = shownChats.filter(isTalk);
   const allRecords = list('records').filter((x) => !isPendingDelete('record', x.id));
   filterBar.setCategories(categoryOptions([...allRecords.map(recordPath), ...allChats.map(chatPath)]));
   const terms = splitTerms(f.q);
@@ -283,9 +292,19 @@ function renderLists() {
     (x) => chatCat(x.item),
   );
   $('#s-chats-card').hidden = allChats.length === 0;
+  $('#s-chats-none').hidden = allChats.length > 0;
   $('#s-chats-title').textContent = countTitle('묻기 대화', chatTotal, chatRows.length);
   $('#s-chats').replaceChildren(...chatRows.slice(0, shown.chat).map((x) => chatRow(x.item, x.hit, terms)));
   moreButton($('#s-chats-more'), 'chat', chatRows.length);
+
+  // 범용 대화. 분야가 없으므로 분야·결과 필터는 적용하지 않는다.
+  const talkTotal = allTalks.filter((x) => isArchived('chat', x.id) === f.archived).length;
+  const talkRows = sortItems(archiveView(baseFilter(allTalks, 'chat', f), f), f.sort, (x) => chatTime(x.item), () => '');
+  $('#s-talks-card').hidden = allTalks.length === 0;
+  $('#s-talks-none').hidden = allTalks.length > 0;
+  $('#s-talks-title').textContent = countTitle('대화', talkTotal, talkRows.length);
+  $('#s-talks').replaceChildren(...talkRows.slice(0, shown.talk).map((x) => chatRow(x.item, x.hit, terms)));
+  moreButton($('#s-talks-more'), 'talk', talkRows.length);
 }
 
 // ── 상세 화면 ─────────────────────────────────────────
@@ -332,8 +351,9 @@ function archiveDeleteButtons(kind, id) {
   return [h('button', { type: 'button', onclick: () => toggleArchive(kind, id) }, isArchived(kind, id) ? '보관 해제' : '보관'), del];
 }
 
+// 「이어서 묻기」 (범용 대화는 「이어서 대화」). 어느 화면에서 열지는 onResume 을 받은 main.js 가 정한다.
 function chatActions(c) {
-  return h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, '이어서 묻기'), ...archiveDeleteButtons('chat', c.id));
+  return h('div', { class: 'actions' }, h('button', { type: 'button', onclick: () => onResumeChat(c) }, isTalk(c) ? '이어서 대화' : '이어서 묻기'), ...archiveDeleteButtons('chat', c.id));
 }
 
 function chatDetail(c) {
@@ -383,6 +403,9 @@ export function showRecordsDetail(target) {
   opened = target;
   renderDetail();
   if (!opened) return; // 지워진 항목이면 renderDetail 이 목록으로 돌려놓았다.
+  // 목록으로 돌아가면 이 항목이 있는 하위 탭이 보이게 한다.
+  const item = target.kind === 'chat' ? list('chats').find((x) => x.id === target.id) : null;
+  selectRecordsTab(target.kind === 'record' ? 'record' : isTalk(item) ? 'talk' : 'chat');
   $('#s-lists').hidden = true;
   $('#s-detail').hidden = false;
 }
