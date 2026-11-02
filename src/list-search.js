@@ -119,6 +119,7 @@ export function chatFields(c, note) {
   return [
     { label: '제목', text: c.title, title: true },
     { label: '분야', text: c.category },
+    ...(c.summary ? [{ label: '요약', text: c.summary }] : []),
     ...c.history.flatMap((t) => [
       { label: '질문', text: t.q },
       { label: '답변', text: t.a },

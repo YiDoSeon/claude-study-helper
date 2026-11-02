@@ -11,28 +11,41 @@ import { describeError } from '../api.js';
 import { createChoicePicker, defaultChoice, resolveChoice } from '../chat-choice.js';
 import { onModelHintUpdate } from '../model-hint.js';
 import { collectSources, hasSearchBlocks } from '../web-search.js';
-import { put, list, newId } from '../store.js';
+import { put, get, list, newId } from '../store.js';
+import { chatPreface } from '../chat-fork.js';
+import { forkButton } from '../fork-dialog.js';
+import { forkOriginLine, summaryBlock } from '../fork-ui.js';
 
 const FREE_CATEGORY = '자유 질문';
 
-// 첫 질문 앞에 붙일 문제 맥락. 「더 물어보기」 와 같은 모양으로 보낸다.
-function withContext(context, question) {
-  return context ? `${context}\n\n## 질문\n${question}` : question;
+// 첫 질문 앞에 붙일 문제 맥락과 이전 대화 요약 (chatPreface). 「더 물어보기」 와 같은 모양으로 보낸다.
+function withContext(preface, question) {
+  return preface ? `${preface}\n\n## 질문\n${question}` : question;
 }
 
 // 저장된 글만으로 API 에 보낼 대화를 만든다. thinking 블록과 검색 블록은 들어가지 않는다.
-function textMessages(history, context) {
-  return history.flatMap((t, i) => [
-    { role: 'user', content: i === 0 ? withContext(context, t.q) : t.q },
+function textMessages(saved) {
+  const preface = chatPreface(saved);
+  return saved.history.flatMap((t, i) => [
+    { role: 'user', content: i === 0 ? withContext(preface, t.q) : t.q },
     { role: 'assistant', content: t.a },
   ]);
 }
 
+// 쌍마다 붙는 버튼 줄의 conv. fork 버튼은 누를 때 저장된 대화를 다시 읽는다.
+const pairConv = (saved) => ({
+  title: saved.title,
+  context: saved.context,
+  actions: (pair) => [forkButton(() => get('chats', saved.id), pair)],
+});
+
 // { id, at, title, category, history: [{ q, a, at, meta, sources? }], messages: API 에 보낼 대화,
 //   choice: 마지막으로 고른 { model, effort },
-//   푼 문제에서 넘어왔으면 recordId, topic, context: 문제·내 답·채점 결과 글 }
+//   푼 문제에서 넘어왔으면 recordId, topic, context: 문제·내 답·채점 결과 글,
+//   fork 로 만들었으면 forkOf, 압축했으면 summary: 이전 대화 요약 (chat-fork.js) }
 let chat = null;
 let onQuizCallback = () => {};
+let onOpenChatCallback = () => {};
 let picker = null; // 입력 영역의 모델·노력 칸
 let idleTouched = false; // 대화가 없을 때 사용자가 칸을 바꿨는지. 바꿨으면 설정이 바뀌어도 덮어쓰지 않는다.
 
@@ -56,7 +69,7 @@ function applyChoice(target) {
 }
 
 function renderChrome() {
-  const hasAnswer = chat?.history.length > 0;
+  const hasAnswer = chat?.history.length > 0 || !!chat?.summary;
   $('#a-empty').hidden = !!chat;
   $('#a-quiz').hidden = !hasAnswer;
   $('#a-new').hidden = !chat;
@@ -104,8 +117,8 @@ async function send(event) {
   const prevModel = chat.history.at(-1)?.meta?.model ?? chat.choice?.model;
   const modelChanged = !!prevModel && prevModel !== choice.model;
   // 검색을 끈 채로 보내거나 모델이 바뀌면 도구 정의가 달라 이전 검색 블록이 거절되므로, 저장된 글로 대화를 다시 만든다.
-  if ((!webSearch || modelChanged) && hasSearchBlocks(chat.messages)) chat.messages = textMessages(chat.history, chat.context);
-  chat.messages.push({ role: 'user', content: chat.messages.length ? text : withContext(chat.context, text) });
+  if ((!webSearch || modelChanged) && hasSearchBlocks(chat.messages)) chat.messages = textMessages(chat);
+  chat.messages.push({ role: 'user', content: chat.messages.length ? text : withContext(chatPreface(chat), text) });
   input.value = '';
   renderChrome();
   appendBubble($('#a-log'), 'user', text);
@@ -127,7 +140,7 @@ async function send(event) {
     chat.choice = choice;
     const { messages, ...saved } = chat;
     put('chats', saved);
-    appendPairActions(body, { title: chat.title, context: chat.context }, pair);
+    appendPairActions(body, pairConv(chat), pair);
   } catch (err) {
     chat.messages.pop();
     showBubbleError(body, describeError(err));
@@ -138,10 +151,11 @@ async function send(event) {
 }
 
 function quizFromChat() {
-  if (!chat?.history.length) return;
+  if (!chat?.history.length && !chat?.summary) return;
+  const summary = chat.summary ? `이전 대화 요약:\n${chat.summary}` : '';
   onQuizCallback({
     topic: chat.topic ?? { path: [chat.category || FREE_CATEGORY], detail: chat.title },
-    context: chatToContext(chat.history),
+    context: [summary, chatToContext(chat.history)].filter(Boolean).join('\n\n'),
   });
 }
 
@@ -150,21 +164,32 @@ export function resumeChat(saved) {
   chat = {
     ...saved,
     history: [...saved.history],
-    messages: textMessages(saved.history, saved.context),
+    messages: textMessages(saved),
   };
   picker.set(resolveChoice(saved.choice, saved.history));
   $('#a-category').value = saved.category ?? '';
   fillSub(saved.topic?.path?.[0] === saved.category ? (saved.topic.path[1] ?? '') : '');
   $('#a-log').replaceChildren();
+  const origin = forkOriginLine(saved, onOpenChatCallback);
+  if (origin) $('#a-log').append(origin);
   if (saved.context) $('#a-log').append(chatContextBlock(saved));
+  const summary = summaryBlock(saved);
+  if (summary) $('#a-log').append(summary);
   for (const t of saved.history) {
     appendBubble($('#a-log'), 'user', t.q);
     const body = appendBubble($('#a-log'), 'assistant', t.a);
     appendSources(body, t.sources);
     appendMeta(body, t.meta);
-    appendPairActions(body, { title: saved.title, context: saved.context }, t);
+    appendPairActions(body, pairConv(saved), t);
   }
   renderChrome();
+}
+
+// fork 로 만든 새 대화를 열어 바로 물을 수 있게 한다.
+export function openForkedChat(saved) {
+  resumeChat(saved);
+  expandDock();
+  $('#a-input').focus();
 }
 
 // 푼 문제의 「더 물어보기」 대화를 「묻기」 대화로 옮겨 이어 간다. 이미 옮긴 문제면 그 대화를 연다.
@@ -199,8 +224,10 @@ export function continueFromRecord(record) {
   $('#a-input').focus();
 }
 
-export function initAskView({ onQuiz }) {
+// onOpenChat(id) 는 fork 한 대화의 「원래 대화 보기」 를 누르면 부른다.
+export function initAskView({ onQuiz, onOpenChat }) {
   onQuizCallback = onQuiz;
+  onOpenChatCallback = onOpenChat;
   fillSelect(
     $('#a-category'),
     [{ value: '', label: '(정하지 않음)' }, ...TOPICS.map((t) => ({ value: t.label, label: t.label }))],

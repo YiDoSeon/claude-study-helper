@@ -90,13 +90,15 @@ export function downloadMarkdown(name, text) {
 
 // ── 쌍마다 붙는 버튼 줄 ──
 
-// conv 는 { title, context? } 이다 (답을 그릴 때의 값을 쥐고 있는다).
+// conv 는 { title, context?, actions? } 이다 (답을 그릴 때의 값을 쥐고 있는다).
+// conv.actions(pair) 가 있으면 돌려준 버튼들을 끝에 더한다 (묻기 대화의 fork 버튼).
 export function pairActions(conv, pair) {
   return h(
     'div',
     { class: 'qa-actions' },
     h('button', { type: 'button', 'data-qa': 'copy', onclick: () => copyWithToast(singleMarkdown(conv, pair)) }, '복사'),
     h('button', { type: 'button', 'data-qa': 'save', onclick: () => downloadMarkdown(fileName(conv.title), singleMarkdown(conv, pair)) }, '저장'),
+    conv.actions?.(pair) ?? [],
   );
 }
 

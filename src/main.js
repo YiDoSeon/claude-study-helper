@@ -6,7 +6,8 @@ import { onChange, initStore } from './store.js';
 import { initSaveNotice } from './save-notice.js';
 import { startAutoSync, onStatus } from './sync.js';
 import { initQuizView, startReview, startFromChat } from './views/quiz-view.js';
-import { initAskView, resumeChat, continueFromRecord, closeChatIfOpen } from './views/ask-view.js';
+import { initAskView, resumeChat, continueFromRecord, closeChatIfOpen, openForkedChat } from './views/ask-view.js';
+import { initFork } from './fork-dialog.js';
 import { initReviewView, renderReviewView } from './views/review-view.js';
 import { initRecordsView, renderRecordsView, showRecordsDetail } from './views/records-view.js';
 import { initRouter, navigate } from './router.js';
@@ -90,10 +91,20 @@ async function init() {
       startReview(item, opts);
     },
   });
+  // fork 한 대화의 「원래 대화 보기」: 기록 화면에서 그 대화의 상세를 연다.
+  const openChatDetail = (id) => navigate({ view: 'records', detail: { kind: 'chat', id } });
   initAskView({
     onQuiz: (chat) => {
       goTo('quiz');
       startFromChat(chat);
+    },
+    onOpenChat: openChatDetail,
+  });
+  initFork({
+    onCreated: (chat) => {
+      goTo('ask');
+      openForkedChat(chat);
+      scrollToEnd();
     },
   });
   initRecordsView({
@@ -108,6 +119,7 @@ async function init() {
     onDeleted: (kind, id) => {
       if (kind === 'chat') closeChatIfOpen(id);
     },
+    onOpenChatById: openChatDetail,
   });
   initSettingsView({ onKeyChange: updateKeyNotice, onUsageChange: updateUsageStatus });
 

@@ -5,7 +5,9 @@ import { sourcesBlock, metaLine, chatContextBlock } from '../chat-ui.js';
 import { attachChatNav } from '../chat-nav.js';
 import { pairActions, appendQuestionActions, attachExport } from '../qa-export.js';
 import { decoratePre } from '../code-block.js';
-import { list } from '../store.js';
+import { list, get } from '../store.js';
+import { forkButton } from '../fork-dialog.js';
+import { forkOriginLine, summaryBlock } from '../fork-ui.js';
 import { findItemForRecord, addFromRecord } from '../review.js';
 import { isStarred } from '../favorites.js';
 import { isArchived, toggleArchive } from '../archive.js';
@@ -27,6 +29,7 @@ let onContinueRecord = () => {};
 let onOpenDetail = () => {};
 let onBackToList = () => {};
 let onItemDeleted = () => {};
+let onOpenChat = () => {};
 // 상세 화면에 연 항목. { kind: 'record' | 'chat', id } 이고, 목록을 보고 있으면 null.
 let opened = null;
 // 상세 화면 옆의 즐겨찾기·메모 도구 (detail-tools.js). initRecordsView 가 만든다.
@@ -35,8 +38,10 @@ let detailTools = null;
 // 상세 화면을 여닫는 것은 방문 기록에 남도록 main.js 가 router 로 처리한다.
 // onOpen(target) 은 항목을 눌렀을 때, onBack() 은 「← 목록으로」 를 눌렀을 때 부른다.
 // onDeleted(kind, id) 는 삭제해서 화면에서 숨긴 직후 부른다 (다른 화면이 그 항목을 비우게).
-export function initRecordsView({ onResume, onContinue, onOpen, onBack, onDeleted = () => {} }) {
+// onOpenChatById(id) 는 fork 한 대화의 「원래 대화 보기」 를 누르면 부른다.
+export function initRecordsView({ onResume, onContinue, onOpen, onBack, onDeleted = () => {}, onOpenChatById = () => {} }) {
   onResumeChat = onResume;
+  onOpenChat = onOpenChatById;
   onContinueRecord = onContinue;
   onOpenDetail = onOpen;
   onBackToList = onBack;
@@ -99,7 +104,8 @@ function qaBlock(t, conv) {
 }
 
 const recordConv = (r) => ({ title: `문제: ${r.question.concept}` });
-const chatConv = (c) => ({ title: c.title, context: c.context });
+// 대화 상세의 쌍에는 fork 버튼을 더한다. 누를 때 저장된 대화를 다시 읽는다.
+const chatConv = (c) => ({ title: c.title, context: c.context, actions: (pair) => [forkButton(() => get('chats', c.id), pair)] });
 
 // 열린 상세의 대화를 내보내기 창에 준다. 문제 상세는 더 물어본 내용, 대화 상세는 그 대화다.
 function openedConv() {
@@ -156,6 +162,11 @@ function recordRow(r, hit, terms) {
   );
 }
 
+// 대화 목록 줄과 상세 머리의 한 줄: 분야, (fork), 질문 개수, 시각.
+function chatMeta(c) {
+  return [c.category || '자유 질문', c.forkOf ? 'fork' : '', `질문 ${c.history.length}개`, formatDate(c.updatedAt ?? c.at)].filter(Boolean).join(' · ');
+}
+
 function chatRow(c, hit, terms) {
   return h(
     'li',
@@ -165,7 +176,7 @@ function chatRow(c, hit, terms) {
       { type: 'button', class: 'record-row', 'data-key': `chat:${c.id}`, onclick: () => onOpenDetail({ kind: 'chat', id: c.id }) },
       starMark('chat', c.id),
       h('strong', {}, ...titleNodes(chatTitle(c), terms)),
-      h('span', { class: 'muted small' }, ` · ${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
+      h('span', { class: 'muted small' }, ` · ${chatMeta(c)}`),
       noteMark('chat', c.id),
       hitLine(hit),
     ),
@@ -328,8 +339,10 @@ function chatActions(c) {
 function chatDetail(c) {
   return [
     h('h2', { class: 'detail-title' }, chatTitle(c)),
-    h('p', { class: 'muted small' }, `${c.category || '자유 질문'} · 질문 ${c.history.length}개 · ${formatDate(c.updatedAt ?? c.at)}`),
+    h('p', { class: 'muted small' }, chatMeta(c)),
+    forkOriginLine(c, onOpenChat) ?? '',
     c.context ? chatContextBlock(c) : '',
+    summaryBlock(c) ?? '',
     ...c.history.map((t) => qaBlock(t, chatConv(c))),
   ];
 }
