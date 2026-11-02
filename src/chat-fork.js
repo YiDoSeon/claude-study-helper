@@ -42,8 +42,3 @@ export function chatPreface(chat) {
   if (chat.summary) parts.push(`## 이전 대화 요약\n앞서 나눈 대화를 요약한 것이다. 이 맥락을 이어서 답한다.\n\n${chat.summary}`);
   return parts.join('\n\n');
 }
-
-// 「질문 1~3」, 「질문 1」 처럼 가져간 범위를 적는 말.
-export function rangeLabel(index) {
-  return index === 0 ? '질문 1' : `질문 1~${index + 1}`;
-}

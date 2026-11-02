@@ -2,12 +2,11 @@
 import { h } from './dom.js';
 import { renderMarkdown } from './markdown.js';
 import { get } from './store.js';
-import { rangeLabel } from './chat-fork.js';
 
-// 가져간 것을 적는 말: 「질문 2만」, 「질문 1~3 요약」, 「질문 1~3」.
+// 가져간 것을 적는 말. 질문 번호는 사용자가 신경 쓸 값이 아니라서 적지 않는다.
 function forkWhat(f) {
-  if (f.single) return `질문 ${f.index + 1}만`;
-  return f.summarized ? `${rangeLabel(f.index)} 요약` : rangeLabel(f.index);
+  if (f.single) return '질의응답 하나만';
+  return f.summarized ? '앞 대화 요약' : '앞 대화 그대로';
 }
 
 // saved.forkOf 가 없으면 null. onOpen(id) 는 「원래 대화 보기」 를 누르면 부른다.

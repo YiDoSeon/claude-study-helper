@@ -27,7 +27,6 @@ function openForkDialog(origin, pair, opener) {
   const index = pairIndex(origin.history, pair);
   if (index < 0) return;
   closeOpen?.();
-  const n = index + 1;
 
   const single = h('input', { type: 'checkbox', 'data-fork': 'single' });
   const note = h('p', { class: 'muted small fork-note' });
@@ -38,7 +37,7 @@ function openForkDialog(origin, pair, opener) {
   const dialog = h(
     'div',
     { class: 'fork-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'fork-title' },
-    h('h3', { id: 'fork-title' }, `질문 ${n}에서 새 대화 만들기`),
+    h('h3', { id: 'fork-title' }, '이 질문에서 새 대화 만들기'),
     h('p', { class: 'small' }, '원래 대화는 그대로 두고, 새 대화를 만들어 이어서 물어요.'),
     h('label', { class: 'check' }, single, '이 질의응답만 가져가기'),
     note,
@@ -56,7 +55,7 @@ function openForkDialog(origin, pair, opener) {
     note.replaceChildren(
       ...(single.checked
         ? ['이 질의응답 하나만 그대로 가져가요. 이 질의응답만 가져갈 때는 압축하지 않아요.']
-        : [`압축: 처음부터 질문 ${n}까지 요약해서 가져가요. 요약에 API 요청이 한 번 들어가요.`, h('br'), `압축 안 함: 처음부터 질문 ${n}까지 그대로 가져가요.`]),
+        : ['압축: 처음부터 이 질문까지 요약해서 가져가요. 요약에 API 요청이 한 번 들어가요.', h('br'), '압축 안 함: 처음부터 이 질문까지 그대로 가져가요.']),
     );
   }
 
