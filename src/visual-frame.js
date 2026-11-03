@@ -41,7 +41,8 @@ try {
 }
 if (mermaid) {
   try {
-    mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: '${dark ? 'dark' : 'default'}' });
+    // 글자칸을 HTML (foreignObject) 이 아니라 SVG 글자로 그린다. HTML 글자칸은 폰에서 잰 폭보다 넓게 그려져 상자를 넘쳤다.
+    mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: '${dark ? 'dark' : 'default'}', htmlLabels: false, flowchart: { htmlLabels: false } });
     const { svg } = await mermaid.render('visual-mermaid', code);
     document.getElementById('box').innerHTML = svg;
     sendHeight();
