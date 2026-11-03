@@ -5,6 +5,7 @@ import { folderOf, isSyncFile, partitionData } from './sync-layout.js';
 
 const API = 'https://api.github.com';
 const PUSH_DELAY_MS = 4000;
+const RETRY_DELAYS_MS = [1000, 3000];
 
 let status = { state: 'off', message: '동기화 꺼짐' };
 const statusListeners = new Set();
@@ -124,14 +125,31 @@ async function createFirstFile(folder) {
   });
 }
 
+// 이 기기가 ref 를 옮긴 기록: 옮기기 전 sha → 옮긴 뒤 sha.
+// ref 를 갱신한 직후의 GET ref 는 옮기기 전 sha 를 돌려줄 때가 있다. 그 sha 위에 커밋을 만들면 갱신이 422 (fast forward 아님) 로 실패한다.
+const movedRefs = new Map();
+
+function latestKnown(sha) {
+  const seen = new Set();
+  while (movedRefs.has(sha) && !seen.has(sha)) {
+    seen.add(sha);
+    sha = movedRefs.get(sha);
+  }
+  return sha;
+}
+
+async function readRef(branch) {
+  return latestKnown((await request(refUrl(branch))).object.sha);
+}
+
 async function fetchHead(branch, folder) {
   try {
-    return (await request(refUrl(branch))).object.sha;
+    return await readRef(branch);
   } catch (err) {
     if (!(err instanceof GithubError && err.status === 409)) throw err;
   }
   await createFirstFile(folder);
-  return (await request(refUrl(branch))).object.sha;
+  return readRef(branch);
 }
 
 async function fetchBlobJson(sha) {
@@ -206,6 +224,7 @@ async function syncOnce() {
       method: 'PATCH',
       body: JSON.stringify({ sha: newCommit.sha, force: false }),
     });
+    movedRefs.set(head, newCommit.sha);
     for (const path of uploads.keys()) next[path] = shaOf.get(path);
   }
   saveShas(next);
@@ -220,12 +239,17 @@ export function syncNow() {
   setStatus('busy', '동기화 중…');
   running = (async () => {
     try {
-      try {
-        await syncOnce();
-      } catch (err) {
-        // 다른 기기가 먼저 올려 head 가 바뀌었으면 (ref 갱신 422) 처음부터 다시 받아 합친다.
-        if (err instanceof GithubError && (err.status === 409 || err.status === 422)) await syncOnce();
-        else throw err;
+      // 다른 기기가 먼저 올려 head 가 바뀌었으면 (ref 갱신 422) 처음부터 다시 받아 합친다.
+      // GET ref 가 바뀐 head 를 바로 돌려주지 않을 때가 있어, 곧바로 하지 않고 잠시 기다렸다가 한다.
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          await syncOnce();
+          break;
+        } catch (err) {
+          const conflict = err instanceof GithubError && (err.status === 409 || err.status === 422);
+          if (!conflict || attempt >= RETRY_DELAYS_MS.length) throw err;
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+        }
       }
       setStatus('ok', '동기화됨');
     } catch (err) {
