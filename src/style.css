@@ -262,10 +262,11 @@ label.check input { width: auto; margin: 0; }
   align-items: flex-end;
   gap: 8px;
 }
-/* 입력 영역이 있는 화면에서는 입력 영역 (--dock-h, chat-nav.js 가 잰 높이) 위에 둔다. */
-.chat-nav.above-dock { bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + 12px); }
+/* 입력 영역이 있는 화면에서는 입력 영역 위에 둔다. --dock-rise 는 chat-nav.js 가 잰 화면 아래 끝에서 입력 영역 위쪽 경계까지의 거리다.
+   재기 전에는 하단 탭 위를 쓴다. */
+.chat-nav.above-dock { bottom: calc(var(--dock-rise, calc(57px + env(safe-area-inset-bottom))) + 12px); }
 /* 접기 손잡이가 있는 입력 영역에서는 손잡이 (위로 34px) 위에 둔다. */
-.chat-nav.above-dock.above-toggle { bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + 44px); }
+.chat-nav.above-dock.above-toggle { bottom: calc(var(--dock-rise, calc(57px + env(safe-area-inset-bottom))) + 44px); }
 .chat-nav-toggle, .detail-tool {
   min-height: 40px;
   border-radius: 999px;

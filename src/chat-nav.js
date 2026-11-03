@@ -62,10 +62,29 @@ export function attachChatNav(container, { questionSelector, bottom = container,
   if (dock?.querySelector('.dock-toggle')) nav.classList.add('above-toggle');
   container.after(nav);
   if (dock) {
-    const syncDockHeight = () => nav.style.setProperty('--dock-h', `${dock.offsetHeight}px`);
-    syncDockHeight();
-    // jsdom 같은 환경에는 ResizeObserver 가 없다. 없으면 처음 잰 높이를 쓴다.
-    if (typeof ResizeObserver === 'function') new ResizeObserver(syncDockHeight).observe(dock);
+    // dock 은 sticky 라 대화가 짧으면 화면 맨 아래보다 위에 있다. 그래서 높이가 아니라 실제 위쪽 경계의 위치를 잰다.
+    // --dock-rise: 화면 아래 끝에서 dock 위쪽 경계까지의 거리. 화면이 숨어 있어 높이가 0 이면 재지 않는다.
+    let frame = 0;
+    const syncDockTop = () => {
+      frame = 0;
+      const rect = dock.getBoundingClientRect();
+      if (!(rect.height > 0)) return;
+      // dock 이 화면 위로 스크롤되어 나갔으면 버튼은 하단 탭 위로 돌아간다 (style.css 의 기본값).
+      if (rect.top < 0) nav.style.removeProperty('--dock-rise');
+      else nav.style.setProperty('--dock-rise', `${Math.max(0, Math.round(window.innerHeight - rect.top))}px`);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(syncDockTop);
+    };
+    syncDockTop();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    // jsdom 같은 환경에는 ResizeObserver 가 없다. 없으면 스크롤과 창 크기 변화 때만 잰다.
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(schedule);
+      observer.observe(dock);
+      observer.observe(container);
+    }
   }
 
   function questions() {

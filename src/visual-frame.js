@@ -11,6 +11,10 @@ const MIN_HEIGHT = 40;
 // 글자 안의 </script, <!-- 가 script 를 끝내지 못하도록 < 를 이스케이프한다.
 const jsString = (text) => JSON.stringify(text).replace(/</g, '\\u003c');
 
+// 폰 브라우저는 viewport 설정이 없는 문서의 글자를 키운다 (text autosizing). mermaid 가 글자 폭을 잰 뒤 커지면 상자 밖으로 넘쳐 잘린다.
+const NO_AUTOSIZE = '<meta name="viewport" content="width=device-width, initial-scale=1">';
+const NO_AUTOSIZE_CSS = 'html{-webkit-text-size-adjust:100%;text-size-adjust:100%}';
+
 const reportHeight = `
 const post = (m) => parent.postMessage(m, '*');
 const sendHeight = () => post({ type: 'height', value: Math.ceil(document.documentElement.getBoundingClientRect().height) });
@@ -20,7 +24,10 @@ new ResizeObserver(sendHeight).observe(document.documentElement);
 function mermaidDoc(code, dark) {
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${MERMAID_CSP}">
-<style>html,body{margin:0;background:transparent}#box{display:flex;justify-content:center}#box svg{max-width:100%;height:auto}</style>
+${NO_AUTOSIZE}
+<style>${NO_AUTOSIZE_CSS}html,body{margin:0;background:transparent}#box{display:flex;justify-content:center}#box svg{max-width:100%;height:auto}
+/* 글자 폭이 잰 값보다 조금 넓어도 상자 밖으로 보이게 한다. */
+#box svg foreignObject{overflow:visible}</style>
 </head><body><div id="box"></div>
 <script type="module">
 ${reportHeight}
@@ -49,7 +56,8 @@ function htmlDoc(code, { text, bg }) {
   const colors = [text && `color:${text}`, bg && `background:${bg}`].filter(Boolean).join(';');
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${HTML_CSP}">
-<style>html{${colors}}body{margin:0;padding:8px;font:16px/1.5 system-ui,sans-serif;color:inherit}</style>
+${NO_AUTOSIZE}
+<style>${NO_AUTOSIZE_CSS}html{${colors}}body{margin:0;padding:8px;font:16px/1.5 system-ui,sans-serif;color:inherit}</style>
 </head><body>
 <script>
 ${reportHeight}
