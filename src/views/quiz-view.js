@@ -9,7 +9,7 @@ import { TOPICS, DIFFICULTIES, QUESTION_TYPES, CUSTOM_CATEGORY_ID, CUSTOM_CATEGO
 import { generateQuestion, gradeChoice, gradeAnswer, tutorContext, askTutor } from '../quiz.js';
 import { describeError } from '../api.js';
 import { createChoicePicker, resolveChoice } from '../chat-choice.js';
-import { getSetting } from '../settings.js';
+import { attachQuizChoice } from '../quiz-choice.js';
 import { put, get, list, newId } from '../store.js';
 import { inCategories, lastNode } from '../list-filter.js';
 import { applyResult, dueItems, findItemForRecord, addFromRecord } from '../review.js';
@@ -20,6 +20,7 @@ const ADD_TOPIC = '__add__';
 let current = null; // { topic, difficulty, type, question, review, context, record, chosen, tutor }
 let requestSeq = 0;
 let tutorPicker = null; // 더 물어보기 입력 영역의 모델·노력 칸
+let quizChoice = null; // 문제 출제·채점의 모델·노력 칸 (quiz-choice.js)
 // 분야만 차례로 풀기의 범위 (분야 이름). 전체 추천 개념을 잇는 중이면 null.
 let reviewCategories = null; // 「다음」 이 낼 추천 복습의 분야들 (경로 글자 배열). null 이면 범위가 없다.
 
@@ -84,7 +85,7 @@ function showPanels({ setup, card, result, tutor }) {
 
 async function startQuestion(opts) {
   const seq = ++requestSeq;
-  current = { ...opts, question: null, record: null, chosen: null, tutor: null };
+  current = { ...opts, question: null, record: null, chosen: null, tutor: null, choice: quizChoice.get() };
   $('#tutor-log').replaceChildren();
   showPanels({ setup: !opts.review, card: false, result: false, tutor: false });
   setStatus(opts.review ? `복습 문제를 만드는 중… (${opts.review.concept})` : '문제를 만드는 중…');
@@ -97,6 +98,7 @@ async function startQuestion(opts) {
       avoidConcepts: opts.review ? [] : recentConcepts(opts.topic),
       review: opts.review,
       chatContext: opts.context,
+      choice: current.choice,
     });
     if (seq !== requestSeq) return; // 그사이 다른 문제를 요청했다.
     current.question = question;
@@ -157,7 +159,7 @@ async function submit(giveUp = false) {
     } else {
       userAnswer = $('#q-answer').value;
       $('#q-submit').textContent = '채점 중…';
-      grade = await gradeAnswer(q, userAnswer);
+      grade = await gradeAnswer(q, userAnswer, quizChoice.get());
     }
   } catch (err) {
     setStatus(describeError(err), true);
@@ -177,7 +179,7 @@ async function submit(giveUp = false) {
     userAnswer,
     verdict: grade.verdict,
     feedback: grade.feedback,
-    model: getSetting('model'),
+    model: current.choice.model,
     reviewId: current.review?.id ?? null,
   });
   applyResult(record);
@@ -324,6 +326,7 @@ async function sendTutor(event) {
 
 export function initQuizView({ onContinueInAsk }) {
   const saved = remember('quizSetup') ?? {};
+  quizChoice = attachQuizChoice($('#q-choice'));
   fillCategories(saved.category);
   fillSubtopics(saved.sub);
   $('#q-detail').value = saved.detail ?? '';

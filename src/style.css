@@ -228,8 +228,9 @@ pre {
 /* 접힌 상태: 손잡이만 남기고 얇은 띠로 줄인다. chat-nav.js 의 ResizeObserver 가 줄어든 높이를 다시 잰다. */
 .chat-dock.collapsed { padding-top: 6px; padding-bottom: 6px; }
 .chat-dock.collapsed > :not(.dock-toggle) { display: none; }
-/* 문제 출제·채점에 쓰는 설정 한 줄 (model-hint.js). */
-.model-hint { margin: 6px 0 0; }
+/* 「풀기」 의 문제 출제·채점 모델·노력 칸 (quiz-choice.js). 위의 이름 줄을 칸에 붙인다. */
+.quiz-choice-label { margin: 4px 0 4px; }
+#q-choice { margin-bottom: 10px; }
 /* 입력 영역의 모델·노력 칸 (chat-choice.js). 두 칸을 한 줄에 둔다. */
 .chat-choice { display: flex; gap: 8px; margin-bottom: 6px; }
 .chat-choice select { flex: 1 1 0; min-width: 0; min-height: 34px; margin: 0; padding: 2px 8px; font-size: 0.9rem; }

@@ -34,8 +34,9 @@
         <label>난이도 <select id="q-difficulty"></select></label>
         <label>형식 <select id="q-type"></select></label>
       </div>
+      <p class="muted small quiz-choice-label">문제 출제·채점</p>
+      <div id="q-choice" class="chat-choice"></div>
       <button type="submit" id="q-get" class="primary">문제 받기</button>
-      <p class="muted small model-hint"></p>
     </form>
 
     <p id="q-status" class="status" hidden></p>
@@ -197,7 +198,7 @@
       <label>API 키 <input type="password" id="set-key" autocomplete="off" placeholder="sk-ant-…"></label>
       <label>모델 <select id="set-model"></select></label>
       <label>노력 <select id="set-effort"></select></label>
-      <p class="muted small">높을수록 더 깊이 생각하는 대신 출력 토큰과 비용이 늘어요. 여기의 모델과 노력은 새 대화의 기본값이고 문제 출제와 채점에 쓰여요. 「묻기」 와 「더 물어보기」 는 입력 영역에서 대화마다 바꿀 수 있어요. 모델과 노력은 이 기기에만 저장돼요. 다른 기기는 그 기기에서 바꾸거나 QR 코드로 옮기세요.</p>
+      <p class="muted small">높을수록 더 깊이 생각하는 대신 출력 토큰과 비용이 늘어요. 여기의 모델과 노력은 새 대화와 문제 출제·채점의 기본값이에요. 「묻기」, 「대화」, 「더 물어보기」 는 입력 영역에서 대화마다 바꾸고, 문제 출제·채점은 「풀기」 화면의 「문제 받기」 위에서 바꿔요. 「풀기」 에서 고른 값은 기억해 두고 설정을 바꿔도 그대로예요. 모델과 노력은 이 기기에만 저장돼요. 다른 기기는 그 기기에서 바꾸거나 QR 코드로 옮기세요.</p>
       <p class="muted small">이 기기에서 쓴 금액 (추정): <span id="set-cost"></span>
         <button type="button" id="set-cost-reset" class="link">초기화</button></p>
     </div>

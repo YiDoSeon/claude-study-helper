@@ -80,7 +80,8 @@ function describeTopic(topic) {
   return [...topic.path, topic.detail].filter(Boolean).join(' > ');
 }
 
-export async function generateQuestion({ topic, difficulty, type, avoidConcepts = [], review = null, chatContext = null }) {
+// choice ({ model, effort }) 는 「풀기」 화면에서 고른 값이다 (quiz-choice.js). 노력이 'auto' 면 medium 이다.
+export async function generateQuestion({ topic, difficulty, type, avoidConcepts = [], review = null, chatContext = null, choice }) {
   const lines = [`분야: ${describeTopic(topic)}`, `난이도: ${difficulty}`];
   lines.push(type === 'auto' ? '문제 형식: 주제에 가장 잘 맞는 형식을 골라라.' : `문제 형식: ${type}`);
   if (review) {
@@ -105,7 +106,7 @@ export async function generateQuestion({ topic, difficulty, type, avoidConcepts 
     lines.push('', '최근에 이미 낸 개념이다. 겹치지 않게 다른 개념을 골라라:', ...avoidConcepts.map((c) => `- ${c}`));
   }
   const user = lines.join('\n');
-  const question = await callJson({ system: QUESTION_SYSTEM, user, schema: QuestionSchema, effort: 'medium' });
+  const question = await callJson({ system: QUESTION_SYSTEM, user, schema: QuestionSchema, effort: 'medium', choice });
   const problem = formatProblem(question);
   if (!problem) return question;
   // 어긋난 점을 알려 주고 한 번만 다시 낸다.
@@ -114,6 +115,7 @@ export async function generateQuestion({ topic, difficulty, type, avoidConcepts 
     user: `${user}\n\n앞서 낸 문제는 형식이 어긋났다: ${problem}\n필드 규칙대로 새로 내라.`,
     schema: QuestionSchema,
     effort: 'medium',
+    choice,
   });
   const retryProblem = formatProblem(retry);
   if (retryProblem) throw new FormatError(retryProblem);
@@ -140,7 +142,8 @@ export function gradeChoice(question, index) {
     : { verdict: 'wrong', feedback: `고른 답: ${question.choices[index] ?? '(없음)'}` };
 }
 
-export async function gradeAnswer(question, userAnswer) {
+// choice 는 generateQuestion 과 같다. 노력이 'auto' 면 low 다.
+export async function gradeAnswer(question, userAnswer, choice) {
   if (!userAnswer.trim()) return { verdict: 'wrong', feedback: '답을 적지 않았어요.' };
   const user = [
     '## 문제',
@@ -151,7 +154,7 @@ export async function gradeAnswer(question, userAnswer) {
     '## 학습자 답',
     userAnswer,
   ].join('\n');
-  return callJson({ system: GRADE_SYSTEM, user, schema: GradeSchema, effort: 'low' });
+  return callJson({ system: GRADE_SYSTEM, user, schema: GradeSchema, effort: 'low', choice });
 }
 
 // 튜터 대화의 첫 메시지. 문제와 채점 결과를 맥락으로 넣는다.
