@@ -4,17 +4,21 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { getSetting } from './settings.js';
 
 // 가격은 1M 토큰당 USD. 비용 표시는 추정치다.
-// webSearch 는 모델이 지원하는 웹 검색 도구 버전이다. Haiku 5.5 는 동적 필터링 버전을 지원하지 않는다.
+// webSearch, webFetch 는 모델이 지원하는 웹 검색, 링크 열기 도구 버전이다. Haiku 5.5 는 동적 필터링 버전을 지원하지 않는다.
 export const MODELS = {
-  'claude-opus-5-5': { label: 'Opus 5.5', input: 4, output: 20, cacheRead: 0.2, fallback: true, webSearch: 'web_search_20260209' },
-  'claude-sonnet-5-5': { label: 'Sonnet 5.5', input: 2, output: 10, cacheRead: 0.2, fallback: true, webSearch: 'web_search_20260209' },
-  'claude-haiku-5-5': { label: 'Haiku 5.5', input: 0.1, output: 0.5, cacheRead: 0.01, fallback: false, webSearch: 'web_search_20250305' },
+  'claude-opus-5-5': { label: 'Opus 5.5', input: 4, output: 20, cacheRead: 0.2, fallback: true, webSearch: 'web_search_20260209', webFetch: 'web_fetch_20260209' },
+  'claude-sonnet-5-5': { label: 'Sonnet 5.5', input: 2, output: 10, cacheRead: 0.2, fallback: true, webSearch: 'web_search_20260209', webFetch: 'web_fetch_20260209' },
+  'claude-haiku-5-5': { label: 'Haiku 5.5', input: 0.1, output: 0.5, cacheRead: 0.01, fallback: false, webSearch: 'web_search_20250305', webFetch: 'web_fetch_20250910' },
 };
 
 const COST_KEY = 'study.cost.v1';
-const WEB_SEARCH_PRICE = 0.01; // 검색 1회당 USD
+const WEB_SEARCH_PRICE = 0.01; // 검색 1회당 USD. 링크 열기는 따로 받지 않고 연 페이지 글을 입력 토큰으로 센다.
 const WEB_SEARCH_MAX_USES = 5; // 답 하나에 검색할 수 있는 최대 횟수
+const WEB_FETCH_MAX_USES = 5; // 답 하나에 링크를 열 수 있는 최대 횟수
+const WEB_FETCH_MAX_TOKENS = 30000; // 연 페이지 하나에서 입력에 넣는 글의 최대 토큰 (대략)
 const MAX_CONTINUATIONS = 5; // pause_turn 으로 멈춘 응답을 이어 받는 최대 횟수
+// 대화 답 하나의 최대 출력 토큰. thinking 토큰도 여기에 든다. 스트리밍이라 시간 초과 걱정 없이 크게 둔다.
+const CHAT_MAX_TOKENS = 64000;
 
 export class RefusalError extends Error {}
 export class FormatError extends Error {}
@@ -145,20 +149,26 @@ export async function callJson({ system, user, schema, effort = 'medium', maxTok
 // 대화형 응답을 스트리밍으로 받는다. messages 는 대화 전체이고,
 // 돌려받은 content 를 그대로 다음 요청에 붙여야 thinking 블록이 유지된다.
 // choice ({ model, effort }) 가 있으면 그 모델과 노력으로 요청한다.
-// webSearch 가 true 면 서버 웹 검색 도구를 넣는다. 검색이 길어 pause_turn 으로 멈추면
+// webSearch 가 true 면 서버 웹 검색 도구와 링크 열기 도구를 넣는다. 검색이 길어 pause_turn 으로 멈추면
 // 받은 content 를 assistant 차례로 붙여 다시 보내고, 이어 받은 content 를 하나로 합쳐 돌려준다.
-// 돌려주는 message 의 meta 는 addUsage 가 모은 사용량이다.
+// 돌려주는 message 의 meta 는 addUsage 가 모은 사용량이다. 답이 끝나지 않고 멈췄으면 meta.stop 에 이유를 둔다
+// ('max_tokens': 출력 한도, 'pause_turn': 이어 받기 횟수 한도).
 export async function streamChat({ system, messages, effort = 'medium', webSearch = false, choice, onText }) {
   const { model, effort: requestEffort } = requestParams(choice, effort);
-  const tools = webSearch ? [{ type: MODELS[model].webSearch, name: 'web_search', max_uses: WEB_SEARCH_MAX_USES }] : undefined;
+  const tools = webSearch
+    ? [
+        { type: MODELS[model].webSearch, name: 'web_search', max_uses: WEB_SEARCH_MAX_USES },
+        { type: MODELS[model].webFetch, name: 'web_fetch', max_uses: WEB_FETCH_MAX_USES, max_content_tokens: WEB_FETCH_MAX_TOKENS },
+      ]
+    : undefined;
   const content = [];
-  const meta = { model, effort: requestEffort, input: 0, cacheRead: 0, cacheWrite: 0, output: 0, searches: 0, cost: 0 };
+  const meta = { model, effort: requestEffort, input: 0, cacheRead: 0, cacheWrite: 0, output: 0, searches: 0, fetches: 0, cost: 0 };
   let wroteText = false;
   let toolSinceText = false;
   for (let turn = 0; ; turn++) {
     const stream = client().beta.messages.stream({
       model,
-      max_tokens: 16000,
+      max_tokens: CHAT_MAX_TOKENS,
       system,
       messages: content.length ? [...messages, { role: 'assistant', content }] : messages,
       tools,
@@ -166,11 +176,12 @@ export async function streamChat({ system, messages, effort = 'medium', webSearc
       output_config: { effort: requestEffort },
       ...fallbackParams(model),
     });
-    // 검색 앞뒤의 글이 붙어 보이지 않게 빈 줄을 넣는다. 인용 때문에 나뉜 글 블록 사이에는 넣지 않는다.
+    // 검색·링크 열기 앞뒤의 글이 붙어 보이지 않게 빈 줄을 넣는다. 인용 때문에 나뉜 글 블록 사이에는 넣지 않는다.
+    // 글과 thinking 이 아닌 블록 (server_tool_use, *_tool_result) 은 모두 도구 블록으로 본다.
     stream.on('streamEvent', (event) => {
       if (event.type !== 'content_block_start') return;
       const type = event.content_block.type;
-      if (type === 'server_tool_use' || type === 'web_search_tool_result') toolSinceText = true;
+      if (type !== 'text' && type !== 'thinking' && type !== 'redacted_thinking') toolSinceText = true;
       if (type === 'text' && toolSinceText && wroteText) onText('\n\n');
       if (type === 'text') toolSinceText = false;
     });
@@ -182,7 +193,10 @@ export async function streamChat({ system, messages, effort = 'medium', webSearc
     addUsage(meta, message, trackCost(message, model));
     if (message.stop_reason === 'refusal') throw new RefusalError();
     content.push(...message.content);
-    if (message.stop_reason !== 'pause_turn' || turn >= MAX_CONTINUATIONS) return { ...message, content, meta };
+    if (message.stop_reason !== 'pause_turn' || turn >= MAX_CONTINUATIONS) {
+      if (message.stop_reason === 'max_tokens' || message.stop_reason === 'pause_turn') meta.stop = message.stop_reason;
+      return { ...message, content, meta };
+    }
   }
 }
 
@@ -196,5 +210,6 @@ function addUsage(meta, message, cost) {
   meta.cacheWrite += u.cache_creation_input_tokens ?? 0;
   meta.output += u.output_tokens ?? 0;
   meta.searches += u.server_tool_use?.web_search_requests ?? 0;
+  meta.fetches += u.server_tool_use?.web_fetch_requests ?? 0;
   meta.cost += cost;
 }

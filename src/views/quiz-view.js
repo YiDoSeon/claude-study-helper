@@ -10,6 +10,7 @@ import { generateQuestion, gradeChoice, gradeAnswer, tutorContext, askTutor } fr
 import { describeError } from '../api.js';
 import { createChoicePicker, resolveChoice } from '../chat-choice.js';
 import { attachQuizChoice } from '../quiz-choice.js';
+import { attachItemActions } from '../item-actions.js';
 import { put, get, list, newId } from '../store.js';
 import { inCategories, lastNode } from '../list-filter.js';
 import { applyResult, dueItems, findItemForRecord, addFromRecord } from '../review.js';
@@ -21,6 +22,8 @@ let current = null; // { topic, difficulty, type, question, review, context, rec
 let requestSeq = 0;
 let tutorPicker = null; // 더 물어보기 입력 영역의 모델·노력 칸
 let quizChoice = null; // 문제 출제·채점의 모델·노력 칸 (quiz-choice.js)
+let itemActions = null; // 채점 결과 위의 즐겨찾기·보관·삭제 버튼 (item-actions.js)
+let deletedCurrent = null; // 삭제를 눌러 치운 문제의 current. 「되돌리기」 를 누르면 다시 보인다.
 // 분야만 차례로 풀기의 범위 (분야 이름). 전체 추천 개념을 잇는 중이면 null.
 let reviewCategories = null; // 「다음」 이 낼 추천 복습의 분야들 (경로 글자 배열). null 이면 범위가 없다.
 
@@ -81,6 +84,8 @@ function showPanels({ setup, card, result, tutor }) {
   $('#q-card').hidden = !card;
   $('#q-result').hidden = !result;
   $('#tutor').hidden = !tutor;
+  $('#tutor-dock').hidden = !tutor;
+  itemActions?.refresh();
 }
 
 async function startQuestion(opts) {
@@ -277,6 +282,7 @@ function openTutor() {
     tutorPicker.set(resolveChoice(current.record?.tutorChoice, current.record?.tutor));
   }
   $('#tutor').hidden = false;
+  $('#tutor-dock').hidden = false;
   expandDock();
   $('#tutor-input').focus();
   $('#tutor').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -319,6 +325,33 @@ async function sendTutor(event) {
     showBubbleError(body, describeError(err));
   } finally {
     button.disabled = false;
+  }
+}
+
+// ── 삭제와 되돌리기 ───────────────────────────────────
+
+// 채점 결과에서 삭제를 누르면 문제를 치우고 분야 고르기로 돌아간다. 더 물어보기가 기록을 다시 저장하지 않게 current 를 비운다.
+function removeCurrentRecord() {
+  deletedCurrent = current;
+  requestSeq++;
+  current = null;
+  resetCardButtons();
+  setStatus('');
+  showPanels({ setup: true, card: false, result: false, tutor: false });
+}
+
+// 「되돌리기」 를 누르면 치운 문제를 채점 결과 그대로 다시 보인다. 그사이 다른 문제를 받았으면 그대로 둔다.
+function restoreDeletedRecord() {
+  const saved = deletedCurrent;
+  deletedCurrent = null;
+  if (!saved || current) return;
+  current = saved;
+  renderQuestion();
+  $('#q-answer').value = saved.record.userAnswer ?? '';
+  renderResult(saved.question.type === 'multiple_choice' && saved.question.choices.length > 0);
+  if (current.tutor) {
+    $('#tutor').hidden = false;
+    $('#tutor-dock').hidden = false;
   }
 }
 
@@ -369,6 +402,12 @@ export function initQuizView({ onContinueInAsk }) {
     setStatus('');
     showPanels({ setup: true, card: false, result: false, tutor: false });
   });
+  itemActions = attachItemActions($('#q-item-actions'), {
+    // 채점 결과가 보일 때만 버튼을 보인다. 그 전에는 기록이 없다. 기록 화면에서 지운 기록이면 숨긴다.
+    getTarget: () => (current?.record && !$('#q-result').hidden && get('records', current.record.id) ? { kind: 'record', id: current.record.id } : null),
+    onDeleted: removeCurrentRecord,
+    onRestored: restoreDeletedRecord,
+  });
   tutorPicker = createChoicePicker($('#tutor-choice')); // 칸만 바꿀 때는 기록을 저장하지 않는다 (보낼 때 함께 저장).
   $('#q-ask').addEventListener('click', openTutor);
   $('#tutor-form').addEventListener('submit', sendTutor);
@@ -378,7 +417,7 @@ export function initQuizView({ onContinueInAsk }) {
   $('#tutor-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) $('#tutor-form').requestSubmit();
   });
-  attachDockToggle($('#tutor .chat-dock'));
-  const nav = attachChatNav($('#tutor-log'), { questionSelector: '.bubble.user', bottom: $('#tutor-form'), dock: $('#tutor .chat-dock') });
+  attachDockToggle($('#tutor-dock'));
+  const nav = attachChatNav($('#tutor-log'), { questionSelector: '.bubble.user', bottom: $('#tutor-form'), dock: $('#tutor-dock') });
   attachExport(nav, $('#tutor-log'), () => (current?.record?.tutor?.length ? { title: tutorTitle(current.record), pairs: current.record.tutor } : null));
 }

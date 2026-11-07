@@ -36,8 +36,8 @@ function commit(entry) {
   remove(COLLECTION[entry.kind], entry.id);
 }
 
-// kind 는 'record' 또는 'chat'. 숨기고 알림을 띄운다. onHide 는 숨긴 직후 부른다.
-export function deleteItem(kind, id, { onHide = () => {} } = {}) {
+// kind 는 'record' 또는 'chat'. 숨기고 알림을 띄운다. onHide 는 숨긴 직후, onUndo 는 「되돌리기」 를 누른 직후 부른다.
+export function deleteItem(kind, id, { onHide = () => {}, onUndo = () => {} } = {}) {
   const key = starKey(kind, id);
   if (pending.has(key)) return;
   const entry = { kind, id };
@@ -46,7 +46,13 @@ export function deleteItem(kind, id, { onHide = () => {} } = {}) {
   for (const fn of listeners) fn();
   showToast({
     text: '삭제했어요',
-    action: { label: '되돌리기', onClick: () => pending.delete(key) },
+    action: {
+      label: '되돌리기',
+      onClick: () => {
+        pending.delete(key);
+        onUndo();
+      },
+    },
     ms: UNDO_MS,
     onClose: () => {
       commit(entry);

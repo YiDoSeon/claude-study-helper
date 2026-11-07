@@ -59,7 +59,10 @@
     </article>
 
     <article id="q-result" class="card" hidden>
-      <div id="q-verdict" class="verdict"></div>
+      <div class="result-head">
+        <div id="q-verdict" class="verdict"></div>
+        <span id="q-item-actions" class="item-actions" hidden></span>
+      </div>
       <div id="q-feedback" class="md"></div>
       <h3>모범 답안</h3>
       <div id="q-reference" class="md"></div>
@@ -76,7 +79,9 @@
     <article id="tutor" class="card" hidden>
       <h3>이 문제에 대해 묻기</h3>
       <div id="tutor-log" class="chat-log"></div>
-      <div class="chat-dock">
+    </article>
+    <!-- 입력 영역은 카드 밖, 화면 (section) 의 끝에 둔다. sticky 는 부모 안에서만 붙으므로, 이래야 위의 문제와 해설로 스크롤해도 화면 아래에 남는다. -->
+    <div id="tutor-dock" class="chat-dock" hidden>
         <div id="tutor-choice" class="chat-choice"></div>
         <form id="tutor-form" class="chat-form">
           <textarea id="tutor-input" rows="2" placeholder="궁금한 점을 적어 주세요 (Ctrl+Enter 로 보내기)"></textarea>
@@ -86,8 +91,7 @@
           <button type="button" id="tutor-to-ask">묻기 탭에서 이어 가기</button>
           <span class="muted small dock-note">다음 문제로 넘어가도 기록에 남아 나중에 이어 물을 수 있어요.</span>
         </div>
-      </div>
-    </article>
+    </div>
   </section>
 
   <section id="view-ask" class="view" hidden>
@@ -102,12 +106,13 @@
         <div id="a-choice" class="chat-choice"></div>
         <form id="a-form" class="chat-form">
           <textarea id="a-input" rows="2" placeholder="예: TCP 3-way handshake 가 왜 3번이어야 해? (Ctrl+Enter 로 보내기)"></textarea>
-          <label class="check"><input type="checkbox" id="a-web"> 웹 검색 <span class="muted small dock-note">(검색 1회 약 $0.01, 결과 글은 입력 토큰으로 계산)</span></label>
+          <label class="check"><input type="checkbox" id="a-web"> 웹 검색 <span class="muted small dock-note">(검색 1회 약 $0.01, 결과 글과 연 링크의 글은 입력 토큰으로 계산. 질문에 링크가 있으면 끄더라도 그 링크를 열어요)</span></label>
           <button type="submit" class="primary">보내기</button>
         </form>
         <div class="actions">
           <button type="button" id="a-quiz" class="primary" hidden>이 내용으로 문제 풀기</button>
           <button type="button" id="a-new" hidden>새 대화</button>
+          <span id="a-item-actions" class="item-actions" hidden></span>
         </div>
       </div>
     </div>
@@ -121,11 +126,12 @@
         <div id="g-choice" class="chat-choice"></div>
         <form id="g-form" class="chat-form">
           <textarea id="g-input" rows="2" placeholder="무엇이든 물어보세요 (Ctrl+Enter 로 보내기)"></textarea>
-          <label class="check"><input type="checkbox" id="g-web"> 웹 검색 <span class="muted small dock-note">(검색 1회 약 $0.01, 결과 글은 입력 토큰으로 계산)</span></label>
+          <label class="check"><input type="checkbox" id="g-web"> 웹 검색 <span class="muted small dock-note">(검색 1회 약 $0.01, 결과 글과 연 링크의 글은 입력 토큰으로 계산. 질문에 링크가 있으면 끄더라도 그 링크를 열어요)</span></label>
           <button type="submit" class="primary">보내기</button>
         </form>
         <div class="actions">
           <button type="button" id="g-new" hidden>새 대화</button>
+          <span id="g-item-actions" class="item-actions" hidden></span>
         </div>
       </div>
     </div>

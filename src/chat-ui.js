@@ -59,6 +59,12 @@ export function appendSources(body, sources) {
 
 // 답 하나의 모델, effort, 토큰, 추정 금액 한 줄. meta 는 streamChat 이 돌려준 것이고, 없으면 null.
 // 입력은 캐시에서 읽은 토큰까지 더한 값이다. 출력에는 thinking 토큰이 들어 있다.
+// meta.stop 이 있으면 답이 끝나지 않고 멈춘 것이라 줄 앞에 이유를 붙인다.
+const STOP_NOTE = {
+  max_tokens: '답이 출력 한도에서 끊겼어요. 「이어서 써 줘」 라고 보내면 이어 받을 수 있어요.',
+  pause_turn: '검색이 길어 답이 중간에 멈췄어요. 「이어서 써 줘」 라고 보내면 이어 받을 수 있어요.',
+};
+
 export function metaLine(meta) {
   if (!meta) return null;
   const n = (v) => v.toLocaleString('en-US');
@@ -69,9 +75,12 @@ export function metaLine(meta) {
     `입력 ${n(input)}${meta.cacheRead ? ` (캐시 ${n(meta.cacheRead)})` : ''}`,
     `출력 ${n(meta.output)}`,
     meta.searches ? `검색 ${meta.searches}회` : '',
+    meta.fetches ? `링크 열기 ${meta.fetches}회` : '',
     `약 $${meta.cost.toFixed(3)}`,
   ];
-  return h('p', { class: 'answer-meta' }, parts.filter(Boolean).join(' · '));
+  const line = h('p', { class: 'answer-meta' }, parts.filter(Boolean).join(' · '));
+  const note = STOP_NOTE[meta.stop];
+  return note ? h('div', {}, h('p', { class: 'answer-stop' }, note), line) : line;
 }
 
 export function appendMeta(body, meta) {
