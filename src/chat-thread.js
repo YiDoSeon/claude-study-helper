@@ -9,10 +9,11 @@ export function withContext(preface, question) {
 }
 
 // 저장된 글만으로 API 에 보낼 대화를 만든다. thinking 블록과 검색 블록은 들어가지 않는다.
+// linkNote 는 질문할 때 앱이 받아 붙인 GitHub 릴리스 글 (github-release.js) 이라 질문 뒤에 다시 붙인다.
 export function textMessages(saved) {
   const preface = chatPreface(saved);
   return saved.history.flatMap((t, i) => [
-    { role: 'user', content: i === 0 ? withContext(preface, t.q) : t.q },
+    { role: 'user', content: i === 0 ? withContext(preface, t.q + (t.linkNote ?? '')) : t.q + (t.linkNote ?? '') },
     { role: 'assistant', content: t.a },
   ]);
 }

@@ -10,8 +10,8 @@ import { askFree, chatToContext, tutorContext } from '../quiz.js';
 import { describeError } from '../api.js';
 import { createChoicePicker, defaultChoice, resolveChoice } from '../chat-choice.js';
 import { onModelHintUpdate } from '../model-hint.js';
-import { collectSources, hasSearchBlocks, hasLink } from '../web-search.js';
-import { linkHints } from '../link-hints.js';
+import { collectSources, mergeSources, hasSearchBlocks, hasLink } from '../web-search.js';
+import { fetchReleaseNotes } from '../github-release.js';
 import { put, get, list, newId } from '../store.js';
 import { attachItemActions } from '../item-actions.js';
 import { chatPreface } from '../chat-fork.js';
@@ -103,15 +103,16 @@ async function send(event) {
   const modelChanged = !!prevModel && prevModel !== choice.model;
   // 검색을 끈 채로 보내거나 모델이 바뀌면 도구 정의가 달라 이전 검색 블록이 거절되므로, 저장된 글로 대화를 다시 만든다.
   if ((!webSearch || modelChanged) && hasSearchBlocks(chat.messages)) chat.messages = textMessages(chat);
-  // 링크 안내 (link-hints.js) 는 이번 요청에만 붙이고 저장하는 질문 글에는 넣지 않는다.
-  const sent = text + linkHints(text);
-  chat.messages.push({ role: 'user', content: chat.messages.length ? sent : withContext(chatPreface(chat), sent) });
   input.value = '';
   renderChrome();
   appendBubble($('#a-log'), 'user', text);
   const body = appendBubble($('#a-log'), 'assistant', '…');
   const button = $('#a-form button');
   button.disabled = true;
+  // GitHub 릴리스 링크는 앱이 직접 받아 질문 뒤에 붙인다 (github-release.js). 화면의 질문 글에는 넣지 않고 linkNote 로 따로 저장한다.
+  const release = await fetchReleaseNotes(text);
+  const sent = text + release.note;
+  chat.messages.push({ role: 'user', content: chat.messages.length ? sent : withContext(chatPreface(chat), sent) });
 
   try {
     const { message, text: answer } = await streamInto(body, (onText) =>
@@ -119,10 +120,10 @@ async function send(event) {
     );
     // thinking 블록과 검색 블록까지 포함한 content 전체를 그대로 이어 붙인다.
     chat.messages.push({ role: 'assistant', content: message.content });
-    const sources = collectSources(message.content);
+    const sources = mergeSources(release.sources, collectSources(message.content));
     appendSources(body, sources);
     appendMeta(body, message.meta);
-    const pair = { q: text, a: answer, at: Date.now(), meta: message.meta, ...(sources.length && { sources }) };
+    const pair = { q: text, a: answer, at: Date.now(), meta: message.meta, ...(sources.length && { sources }), ...(release.note && { linkNote: release.note }) };
     chat.history.push(pair);
     chat.choice = choice;
     const { messages, ...saved } = chat;

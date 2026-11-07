@@ -31,6 +31,12 @@ export function collectSources(content) {
   return sources;
 }
 
+// 앞 목록을 먼저 두고, 뒤 목록에서 주소가 겹치지 않는 것만 잇는다.
+export function mergeSources(first, second) {
+  const seen = new Set(first.map((s) => s.url));
+  return [...first, ...second.filter((s) => !seen.has(s.url))];
+}
+
 // 서버 도구 블록 (server_tool_use, web_search_tool_result, web_fetch_tool_result, 동적 필터링의 코드 실행 결과 등).
 const isToolBlock = (b) => b.type === 'server_tool_use' || /_tool_result$/.test(b.type ?? '');
 

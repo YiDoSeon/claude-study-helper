@@ -8,8 +8,8 @@ import { tapConfirm } from '../tap-confirm.js';
 import { describeError } from '../api.js';
 import { createChoicePicker, defaultChoice, resolveChoice } from '../chat-choice.js';
 import { onModelHintUpdate } from '../model-hint.js';
-import { collectSources, hasSearchBlocks, hasLink } from '../web-search.js';
-import { linkHints } from '../link-hints.js';
+import { collectSources, mergeSources, hasSearchBlocks, hasLink } from '../web-search.js';
+import { fetchReleaseNotes } from '../github-release.js';
 import { put, get, newId } from '../store.js';
 import { attachItemActions } from '../item-actions.js';
 import { chatPreface } from '../chat-fork.js';
@@ -70,25 +70,26 @@ async function send(event) {
   const prevModel = chat.history.at(-1)?.meta?.model ?? chat.choice?.model;
   const modelChanged = !!prevModel && prevModel !== choice.model;
   if ((!webSearch || modelChanged) && hasSearchBlocks(chat.messages)) chat.messages = textMessages(chat);
-  // 링크 안내 (link-hints.js) 는 이번 요청에만 붙이고 저장하는 질문 글에는 넣지 않는다.
-  const sent = text + linkHints(text);
-  chat.messages.push({ role: 'user', content: chat.messages.length ? sent : withContext(chatPreface(chat), sent) });
   input.value = '';
   renderChrome();
   appendBubble($('#g-log'), 'user', text);
   const body = appendBubble($('#g-log'), 'assistant', '…');
   const button = $('#g-form button');
   button.disabled = true;
+  // GitHub 릴리스 링크는 앱이 직접 받아 질문 뒤에 붙인다 (github-release.js, 묻기와 같다).
+  const release = await fetchReleaseNotes(text);
+  const sent = text + release.note;
+  chat.messages.push({ role: 'user', content: chat.messages.length ? sent : withContext(chatPreface(chat), sent) });
 
   try {
     const { message, text: answer } = await streamInto(body, (onText) =>
       askGeneral({ messages: chat.messages, webSearch, choice, onText }),
     );
     chat.messages.push({ role: 'assistant', content: message.content });
-    const sources = collectSources(message.content);
+    const sources = mergeSources(release.sources, collectSources(message.content));
     appendSources(body, sources);
     appendMeta(body, message.meta);
-    const pair = { q: text, a: answer, at: Date.now(), meta: message.meta, ...(sources.length && { sources }) };
+    const pair = { q: text, a: answer, at: Date.now(), meta: message.meta, ...(sources.length && { sources }), ...(release.note && { linkNote: release.note }) };
     chat.history.push(pair);
     chat.choice = choice;
     saveChat();
