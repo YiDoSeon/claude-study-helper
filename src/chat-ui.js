@@ -42,11 +42,19 @@ export async function streamInto(body, run) {
   }
 }
 
-// 웹 검색 출처 링크 목록. sources 는 [{ url, title }] 이고, 없으면 null.
+// 링크 열기 서버가 페이지를 받아 온 시각. 서버가 예전에 받아 둔 사본을 줄 수 있어서 함께 보인다.
+function retrievedLine(iso) {
+  const at = new Date(iso);
+  if (!iso || Number.isNaN(at.getTime())) return '';
+  const text = at.toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return h('span', { class: 'muted source-time' }, ` · ${text} 에 받은 내용`);
+}
+
+// 웹 검색·링크 열기 출처 링크 목록. sources 는 [{ url, title, retrievedAt? }] 이고, 없으면 null.
 export function sourcesBlock(sources) {
   if (!sources?.length) return null;
-  const links = sources.map(({ url, title }) =>
-    h('li', {}, h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, title)),
+  const links = sources.map(({ url, title, retrievedAt }) =>
+    h('li', {}, h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, title), retrievedLine(retrievedAt)),
   );
   return h('div', { class: 'sources' }, h('p', { class: 'muted small' }, '출처'), h('ol', {}, links));
 }

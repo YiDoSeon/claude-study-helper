@@ -8,11 +8,12 @@ function isWebUrl(url) {
   }
 }
 
-// 링크 열기로 읽은 페이지를 먼저 쓰고, 이어서 답에서 인용한 페이지 (인용이 없으면 검색 결과 페이지) 를 쓴다. [{ url, title }]
+// 링크 열기로 읽은 페이지를 먼저 쓰고, 이어서 답에서 인용한 페이지 (인용이 없으면 검색 결과 페이지) 를 쓴다. [{ url, title, retrievedAt? }]
+// retrievedAt 은 링크 열기 서버가 그 페이지를 받아 온 시각 (ISO 문자열) 이다. 서버가 예전에 받아 둔 사본을 주면 지금보다 이르다.
 export function collectSources(content) {
   const fetched = content
     .filter((b) => b.type === 'web_fetch_tool_result' && b.content?.type === 'web_fetch_result')
-    .map((b) => ({ url: b.content.url, title: b.content.content?.title }));
+    .map((b) => ({ url: b.content.url, title: b.content.content?.title, retrievedAt: b.content.retrieved_at }));
   const cited = content
     .filter((b) => b.type === 'text')
     .flatMap((b) => b.citations ?? [])
@@ -22,10 +23,10 @@ export function collectSources(content) {
     .flatMap((b) => b.content);
   const seen = new Set();
   const sources = [];
-  for (const { url, title } of [...fetched, ...(cited.length ? cited : found)]) {
+  for (const { url, title, retrievedAt } of [...fetched, ...(cited.length ? cited : found)]) {
     if (!isWebUrl(url) || seen.has(url)) continue;
     seen.add(url);
-    sources.push({ url, title: title || new URL(url).hostname });
+    sources.push({ url, title: title || new URL(url).hostname, ...(retrievedAt && { retrievedAt }) });
   }
   return sources;
 }

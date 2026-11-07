@@ -11,6 +11,7 @@ import { describeError } from '../api.js';
 import { createChoicePicker, defaultChoice, resolveChoice } from '../chat-choice.js';
 import { onModelHintUpdate } from '../model-hint.js';
 import { collectSources, hasSearchBlocks, hasLink } from '../web-search.js';
+import { linkHints } from '../link-hints.js';
 import { put, get, list, newId } from '../store.js';
 import { attachItemActions } from '../item-actions.js';
 import { chatPreface } from '../chat-fork.js';
@@ -102,7 +103,9 @@ async function send(event) {
   const modelChanged = !!prevModel && prevModel !== choice.model;
   // 검색을 끈 채로 보내거나 모델이 바뀌면 도구 정의가 달라 이전 검색 블록이 거절되므로, 저장된 글로 대화를 다시 만든다.
   if ((!webSearch || modelChanged) && hasSearchBlocks(chat.messages)) chat.messages = textMessages(chat);
-  chat.messages.push({ role: 'user', content: chat.messages.length ? text : withContext(chatPreface(chat), text) });
+  // 링크 안내 (link-hints.js) 는 이번 요청에만 붙이고 저장하는 질문 글에는 넣지 않는다.
+  const sent = text + linkHints(text);
+  chat.messages.push({ role: 'user', content: chat.messages.length ? sent : withContext(chatPreface(chat), sent) });
   input.value = '';
   renderChrome();
   appendBubble($('#a-log'), 'user', text);
