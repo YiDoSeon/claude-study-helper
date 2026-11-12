@@ -18,6 +18,7 @@ import { chatPreface } from '../chat-fork.js';
 import { forkOriginLine, summaryBlock } from '../fork-ui.js';
 import { withContext, textMessages, pairConv } from '../chat-thread.js';
 import { attachMemoryFinder } from '../memory-finder.js';
+import { attachChatQuizOptions } from '../chat-quiz-options.js';
 
 const FREE_CATEGORY = '자유 질문';
 
@@ -31,6 +32,7 @@ let onOpenChatCallback = () => {};
 let picker = null; // 입력 영역의 모델·노력 칸
 let idleTouched = false; // 대화가 없을 때 사용자가 칸을 바꿨는지. 바꿨으면 설정이 바뀌어도 덮어쓰지 않는다.
 let itemActions = null; // 입력 영역의 즐겨찾기·보관·삭제 버튼 (item-actions.js)
+let quizOptions = null; // 「이 내용으로 문제 풀기」 의 난이도·형식 칸 (chat-quiz-options.js)
 
 // 고른 분야의 세부 분야를 #a-sub 에 채운다 (풀기 화면 #q-sub 와 같은 목록). 분야가 비면 칸을 숨긴다.
 // selected 가 목록에 없으면 (내 주제 등) 선택지에 남겨 값을 유지한다.
@@ -55,6 +57,7 @@ function renderChrome() {
   const hasAnswer = chat?.history.length > 0 || !!chat?.summary;
   $('#a-empty').hidden = !!chat;
   $('#a-quiz').hidden = !hasAnswer;
+  if (!hasAnswer) quizOptions?.close();
   $('#a-new').hidden = !chat;
   itemActions?.refresh();
 }
@@ -138,12 +141,14 @@ async function send(event) {
   }
 }
 
-function quizFromChat() {
+// setup 은 난이도·형식 칸에서 고른 { difficulty, type }.
+function quizFromChat(setup) {
   if (!chat?.history.length && !chat?.summary) return;
   const summary = chat.summary ? `이전 대화 요약:\n${chat.summary}` : '';
   onQuizCallback({
     topic: chat.topic ?? { path: [chat.category || FREE_CATEGORY], detail: chat.title },
     context: [summary, chatToContext(chat.history)].filter(Boolean).join('\n\n'),
+    ...setup,
   });
 }
 
@@ -155,6 +160,7 @@ export function resumeChat(saved) {
     messages: textMessages(saved),
   };
   picker.set(resolveChoice(saved.choice, saved.history));
+  quizOptions?.close();
   $('#a-category').value = saved.category ?? '';
   fillSub(saved.topic?.path?.[0] === saved.category ? (saved.topic.path[1] ?? '') : '');
   $('#a-log').replaceChildren();
@@ -262,7 +268,7 @@ export function initAskView({ onQuiz, onOpenChat }) {
   const nav = attachChatNav($('#a-log'), { questionSelector: '.bubble.user', bottom: $('#a-form'), dock: $('#view-ask .chat-dock') });
   attachExport(nav, $('#a-log'), () => chat && { title: chat.title, context: chat.context, pairs: chat.history });
   attachMemoryFinder(nav, $('#a-log'), () => chat);
-  tapConfirm($('#a-quiz'), { confirmLabel: '한 번 더 누르면 문제 풀기', onConfirm: quizFromChat });
+  quizOptions = attachChatQuizOptions($('#a-quiz'), $('#a-quiz-options'), quizFromChat);
   itemActions = attachItemActions($('#a-item-actions'), {
     // 저장된 대화일 때만 보인다. 첫 답을 받기 전의 대화는 아직 저장소에 없다.
     getTarget: () => (chat && get('chats', chat.id) ? { kind: 'chat', id: chat.id } : null),

@@ -22,7 +22,9 @@ let current = null; // { topic, difficulty, type, question, review, context, rec
 let requestSeq = 0;
 let tutorPicker = null; // 더 물어보기 입력 영역의 모델·노력 칸
 let quizChoice = null; // 문제 출제·채점의 모델·노력 칸 (quiz-choice.js)
-let itemActions = null; // 채점 결과 위의 즐겨찾기·보관·삭제 버튼 (item-actions.js)
+// 즐겨찾기·보관·삭제 버튼 (item-actions.js). 채점 결과 위 (#q-item-actions) 와 더 물어보기 입력 영역 (#tutor-item-actions) 에 둔다.
+let itemActions = [];
+const refreshItemActions = () => itemActions.forEach((a) => a.refresh());
 let deletedCurrent = null; // 삭제를 눌러 치운 문제의 current. 「되돌리기」 를 누르면 다시 보인다.
 // 분야만 차례로 풀기의 범위 (분야 이름). 전체 추천 개념을 잇는 중이면 null.
 let reviewCategories = null; // 「다음」 이 낼 추천 복습의 분야들 (경로 글자 배열). null 이면 범위가 없다.
@@ -85,7 +87,7 @@ function showPanels({ setup, card, result, tutor }) {
   $('#q-result').hidden = !result;
   $('#tutor').hidden = !tutor;
   $('#tutor-dock').hidden = !tutor;
-  itemActions?.refresh();
+  refreshItemActions();
 }
 
 async function startQuestion(opts) {
@@ -266,11 +268,17 @@ export function startReview(item, opts = {}) {
   startQuestion({ topic: item.topic, difficulty: item.difficulty, type: 'auto', review: item });
 }
 
-// 「묻기」 대화에서 다룬 개념으로 문제를 낸다. 난이도와 형식은 풀기 화면에 고른 값을 쓴다.
-export function startFromChat({ topic, context }) {
+// 「묻기」 대화에서 다룬 개념으로 문제를 낸다. 난이도와 형식은 묻기 화면에서 고른 값을 쓰고, 없으면 풀기 화면에 고른 값을 쓴다.
+export function startFromChat({ topic, context, difficulty, type }) {
   reviewCategories = null;
   resetCardButtons();
-  startQuestion({ topic, difficulty: $('#q-difficulty').value, type: $('#q-type').value, review: null, context });
+  startQuestion({
+    topic,
+    difficulty: difficulty ?? $('#q-difficulty').value,
+    type: type ?? $('#q-type').value,
+    review: null,
+    context,
+  });
 }
 
 // ── 튜터 ──────────────────────────────────────────────
@@ -283,6 +291,7 @@ function openTutor() {
   }
   $('#tutor').hidden = false;
   $('#tutor-dock').hidden = false;
+  refreshItemActions();
   expandDock();
   $('#tutor-input').focus();
   $('#tutor').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -352,6 +361,7 @@ function restoreDeletedRecord() {
   if (current.tutor) {
     $('#tutor').hidden = false;
     $('#tutor-dock').hidden = false;
+    refreshItemActions();
   }
 }
 
@@ -402,12 +412,16 @@ export function initQuizView({ onContinueInAsk }) {
     setStatus('');
     showPanels({ setup: true, card: false, result: false, tutor: false });
   });
-  itemActions = attachItemActions($('#q-item-actions'), {
-    // 채점 결과가 보일 때만 버튼을 보인다. 그 전에는 기록이 없다. 기록 화면에서 지운 기록이면 숨긴다.
-    getTarget: () => (current?.record && !$('#q-result').hidden && get('records', current.record.id) ? { kind: 'record', id: current.record.id } : null),
-    onDeleted: removeCurrentRecord,
-    onRestored: restoreDeletedRecord,
-  });
+  // 두 곳 모두 같은 기록을 가리킨다. 패널이 보일 때만 버튼을 보인다. 채점 전에는 기록이 없고, 기록 화면에서 지운 기록이면 숨긴다.
+  const recordTarget = (panel) => () =>
+    current?.record && !$(panel).hidden && get('records', current.record.id) ? { kind: 'record', id: current.record.id } : null;
+  itemActions = ['#q-result', '#tutor-dock'].map((panel) =>
+    attachItemActions($(panel === '#q-result' ? '#q-item-actions' : '#tutor-item-actions'), {
+      getTarget: recordTarget(panel),
+      onDeleted: removeCurrentRecord,
+      onRestored: restoreDeletedRecord,
+    }),
+  );
   tutorPicker = createChoicePicker($('#tutor-choice')); // 칸만 바꿀 때는 기록을 저장하지 않는다 (보낼 때 함께 저장).
   $('#q-ask').addEventListener('click', openTutor);
   $('#tutor-form').addEventListener('submit', sendTutor);
